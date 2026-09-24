@@ -1,0 +1,42 @@
+name: Release
+
+# Every v* tag builds the VSIX, writes manifest.json and publishes both as a GitHub Release.
+# The updater reads releases/latest/download/manifest.json, so a draft or pre-release is never picked up.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Check the tag matches package.json
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version $version"
+            exit 1
+          fi
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: xvfb-run -a pnpm test:integration
+      - run: pnpm package
+      - name: Write manifest.json
+        run: node scripts/write-manifest.mjs "oregan-policy-manager-${GITHUB_REF_NAME#v}.vsix" manifest.json
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "oregan-policy-manager-${GITHUB_REF_NAME#v}.vsix" manifest.json \
+            --title "$GITHUB_REF_NAME" --generate-notes

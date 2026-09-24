@@ -19,11 +19,13 @@ description.
 
 ## Source of truth
 
-The design is not in this repo. It lives in two attachments on TMP-7075:
+The design is not in this repo. It lives in two attachments on TMP-7075. A
+re-upload carries a date prefix (`2026-09-24_...`), so read the newest of each:
 
-- `oregan-vscode-extension-spec.md` - Draft v0.4, functional requirements
-  FR-1 to FR-8, manifest essentials and code layout
-- `oregan-vscode-extension-plan.md` - delivery plan, Phases 0 to 7
+- `oregan-vscode-extension-spec.md` - Draft v0.6: the functional requirements,
+  manifest essentials and code layout
+- `oregan-vscode-extension-implementation-plan.md` - the task-by-task
+  implementation plan
 
 Read both before implementing anything. Fetch them through the Atlassian MCP:
 `getJiraIssue` with `fields: ["attachment"]` for the attachment ids, then
@@ -33,28 +35,57 @@ what the CSO signs off.
 
 ## Status
 
-Docs only. Nothing is scaffolded yet. Phase 1 starts with:
+Implemented on `feat/TMP-7075-policy-manager`, not yet released. The
+implementation plan that built it is attached to TMP-7075 as
+`oregan-vscode-extension-implementation-plan.md`.
+
+## Commands
 
 ```sh
-npx --package yo --package generator-code -- yo code
+pnpm install
+pnpm build          # src -> out/
+pnpm test           # node:test specs (src/**/*.test.ts), no editor needed
+xvfb-run -a pnpm test:integration  # @vscode/test-electron, a real editor (Linux needs xvfb-run -a)
+VSCODE_TEST_VERSION=stable xvfb-run -a pnpm test:integration
+pnpm typecheck
+pnpm lint           # pnpm lint:fix to apply the fixes
+pnpm format:check
+pnpm check          # build, typecheck, lint, format:check, test - the fast CI gates
+pnpm package        # oregan-policy-manager-<version>.vsix
 ```
 
-(TypeScript), then trims the generated `package.json` to the manifest in spec
-section 5.
+Each of these is also a VS Code task (`.vscode/tasks.json`), with status-bar
+buttons when the recommended `actboy168.tasks` extension is installed.
 
-## Planned layout
+F5 in VS Code runs the extension in an isolated profile under `.vscode-test/` -
+never point it at your own profile, it will apply the policy there.
+
+## Layout
 
 ```
 src/
-  extension.ts    # activate/deactivate, wiring
-  host.ts         # editor detection, CLI name (FR-6)
-  policy.ts       # managed settings table, apply/watch (FR-1, FR-2, FR-4)
-  copilot.ts      # detection and ordered removal (FR-3)
-  recommend.ts    # Claude Code check and output message (FR-5)
-  updater.ts      # manifest, download, hash, install, timer, lock (FR-7)
-  status.ts       # status report (FR-8)
-test/
-.github/workflows/release.yml
+  extension.ts    # the only module that imports vscode: ports, commands, notifications
+  policy/         # what the policy enforces, one requirement per file
+    settings.ts                 # telemetry off; built-in AI and Copilot settings off
+    keepSettings.ts             # keeping settings in place
+    removeCopilotExtensions.ts  # Copilot extension removal
+    recommendClaudeCode.ts      # Claude Code recommendation
+  host.ts         # multi-editor support: editor detection, CLI name, AI-first message
+  status.ts       # policy status report
+  updater/        # the self-update, and everything only it uses
+    selfUpdate.ts         # update check and timer
+    manifest.ts           # release manifest parsing, version comparison
+    download.ts           # bounded HTTPS GET, verified download
+    lock.ts               # single-window cycle lock
+    releaseManifest.test.ts  # release script output against what the updater accepts
+  logger.ts       # Logger port, describeError
+  links.ts        # policy and IDE Configuration URLs
+  testing/        # spec helpers, excluded from the build
+test/integration/ # @vscode/test-electron suite
+test/fixtures/    # fake managed extensions the suite installs
+scripts/write-manifest.mjs
+.github/workflows/ci.yml       # every PR: lint, format, typecheck, build, test, package, integration
+.github/workflows/release.yml  # v* tags: test, package, publish the VSIX and manifest.json
 ```
 
 ## Design constraints
@@ -87,7 +118,7 @@ These are the ones that are easy to get wrong:
    (`https`, `crypto`, `fs`). Dev dependencies are fine.
 9. **No data collection.** The only outbound requests are GETs for
    `manifest.json` and the VSIX.
-10. **Updater behaviour** (FR-7):
+10. **Updater behaviour:**
     - fetch `releases/latest/download/manifest.json` unauthenticated - a plain
       download URL is not subject to the REST API's 60 requests/hour limit,
       which matters with many developers behind one office IP
@@ -100,6 +131,10 @@ These are the ones that are easy to get wrong:
     when something changes, and the drift message at most once per session.
 12. **Cheap activation.** `onStartupFinished`, under 50 ms of work before
     yielding, all network calls async.
+13. **Built-in Copilot Chat.** VS Code 1.138+ ships `GitHub.copilot-chat` built
+    in, and the uninstall command refuses built-ins. The remover skips it and
+    `chat.disableAIFeatures` is what switches it off - keep that setting in the
+    table.
 
 ## Open questions
 
@@ -107,9 +142,9 @@ From spec section 8. These gate design decisions, so check whether they have
 been answered before building on an assumption:
 
 1. CSO sign-off for company-wide distribution, and for making the release repo
-   public. If it has to stay private, FR-7 switches to authenticated requests
-   via `vscode.authentication.getSession('github', ['repo'])`.
-2. Is Claude Code on Open VSX, so the FR-5 instruction works in VSCodium,
+   public. If it has to stay private, the self-update switches to authenticated
+   requests via `vscode.authentication.getSession('github', ['repo'])`.
+2. Is Claude Code on Open VSX, so the install instruction works in VSCodium,
    Cursor and Windsurf?
 3. Each fork's VS Code base version, the resulting `engines.vscode` floor, and
    whether each fork registers `chat.disableAIFeatures`.
@@ -126,3 +161,7 @@ been answered before building on an assumption:
    ticket, otherwise `area: summary`. Specific over generic.
 4. **Never push without being asked.** Commits stay local until explicitly told
    to push, and each push needs its own go-ahead.
+5. **One requirement per file.** Each requirement lives in its own module -
+   under `src/policy/` for what the policy enforces - starting with a
+   `REQUIREMENT: <name>` header. Don't cite the spec's FR numbers in code or
+   docs: they mean nothing once the spec is revised.
