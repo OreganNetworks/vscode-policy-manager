@@ -105,3 +105,24 @@ jobs:
           name: vsix
           path: oregan-policy-manager-*.vsix
           retention-days: 7
+
+  integration:
+    name: Integration (VS Code ${{ matrix.vscode }})
+    runs-on: ubuntu-latest
+    strategy:
+      # Report both editors even when one fails - a failure on only one of them is the useful signal.
+      fail-fast: false
+      matrix:
+        # The engines.vscode floor, and the current release (which ships Copilot Chat built in).
+        vscode: ['1.90.0', stable]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: xvfb-run -a pnpm test:integration
+        env:
+          VSCODE_TEST_VERSION: ${{ matrix.vscode }}

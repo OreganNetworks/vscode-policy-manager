@@ -22,6 +22,18 @@
       "supported": true
     }
   },
+  "contributes": {
+    "commands": [
+      {
+        "command": "oregan.showPolicyStatus",
+        "title": "Oregan: Show Policy Status"
+      },
+      {
+        "command": "oregan.checkForUpdates",
+        "title": "Oregan: Check for Updates"
+      }
+    ]
+  },
   "scripts": {
     "clean": "node -e \"require('node:fs').rmSync('out', { recursive: true, force: true })\"",
     "build": "pnpm run clean && tsc -p tsconfig.build.json",
@@ -33,16 +45,21 @@
     "format:check": "prettier --check .",
     "test": "node --import tsx --test \"src/**/*.test.ts\"",
     "check": "pnpm build && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
+    "build:integration": "tsc -p tsconfig.integration.json",
+    "test:integration": "pnpm run build && pnpm run build:integration && node out/test/integration/runTests.js",
     "package": "pnpm run build && vsce package --no-dependencies"
   },
   "packageManager": "pnpm@10.30.3",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/mocha": "^10.0.10",
     "@types/node": "^20.19.43",
     "@types/vscode": "1.90.0",
+    "@vscode/test-electron": "^3.1.0",
     "@vscode/vsce": "^4.0.0",
     "eslint": "^10.11.0",
     "globals": "^17.12.0",
+    "mocha": "^11.8.0",
     "prettier": "^3.9.9",
     "tsx": "^4.23.15",
     "typescript": "~5.9.3",

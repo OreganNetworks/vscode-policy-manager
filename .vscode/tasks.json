@@ -52,7 +52,7 @@
       "icon": { "id": "type-hierarchy" },
       "group": "test",
       "problemMatcher": ["$tsc"],
-      "detail": "tsc -p tsconfig.json --noEmit - src/, specs included",
+      "detail": "tsc -p tsconfig.json --noEmit - src/ and test/, so the specs and the integration suite are checked too",
       "options": {
         "statusbar": {
           "color": "#22d682",
@@ -71,6 +71,26 @@
         "statusbar": {
           "color": "#22d682",
           "label": "$(beaker) Test"
+        }
+      }
+    },
+    {
+      "label": "test:integration",
+      "type": "shell",
+      "command": "pnpm run test:integration",
+      "linux": {
+        // Headless: without a virtual display the suite opens editor windows on your desktop
+        "command": "xvfb-run -a pnpm run test:integration"
+      },
+      "group": "test",
+      "problemMatcher": [],
+      "detail": "The @vscode/test-electron suite in a downloaded editor (cached under .vscode-test/) with two fake managed extensions installed - CI runs it on both 1.90.0 and stable",
+      "presentation": { "focus": true, "reveal": "always", "clear": true },
+      "options": {
+        "env": { "VSCODE_TEST_VERSION": "${input:vscodeVersion}" },
+        "statusbar": {
+          "color": "#22d682",
+          "label": "$(vm) Integration"
         }
       }
     },
@@ -130,7 +150,7 @@
       "command": "pnpm run check",
       "group": "test",
       "problemMatcher": [],
-      "detail": "The fast CI gates, in order, via `pnpm check`. The VSIX contents check is the CI job it leaves out",
+      "detail": "The fast CI gates, in order, via `pnpm check`. The integration suite and the VSIX contents check are the two CI jobs it leaves out - run the integration task for the first",
       "options": {
         "statusbar": {
           "color": "#a4ca3d",
@@ -152,6 +172,15 @@
           "label": "$(archive) Package"
         }
       }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "vscodeVersion",
+      "type": "pickString",
+      "description": "VS Code build to run the integration suite against",
+      "options": ["1.90.0", "stable"],
+      "default": "1.90.0"
     }
   ]
 }
