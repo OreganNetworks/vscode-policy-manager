@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+
+  typecheck:
+    name: Type-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+
+  package:
+    name: Package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm package
+      # Every file vsce would ship, checked against the four the extension needs - .vscodeignore excludes the rest,
+      # so a new top-level file or directory fails here instead of turning up in every developer's editor. The listing
+      # goes to RUNNER_TEMP: written into the checkout, it would be one of the files it lists.
+      - name: Check the VSIX holds only the extension
+        run: |
+          listing="$RUNNER_TEMP/vsix-files.txt"
+          pnpm exec vsce ls --no-dependencies > "$listing"
+          cat "$listing"
+          unexpected=$(grep -v -E '^(LICENSE|README\.md|package\.json|out/.+\.js)$' "$listing" || true)
+          if [ -n "$unexpected" ]; then
+            echo "Unexpected files in the VSIX:"
+            echo "$unexpected"
+            exit 1
+          fi
+      # The build under review, installable with `<cli> --install-extension <file>.vsix`. Short retention - releases
+      # carry the VSIXes that matter.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: oregan-policy-manager-*.vsix
+          retention-days: 7

@@ -1,0 +1,157 @@
+{
+  // Tasks for the package.json scripts. Run via "Tasks: Run Task", or use the coloured status-bar buttons provided by
+  // the actboy168.tasks extension (options.statusbar). pnpm is the repo's package manager. Colour groups:
+  // cyan = build/lint, green = typecheck/test, amber = format, yellow-green = aggregate check, magenta = utility.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "install",
+      "type": "shell",
+      "command": "pnpm install",
+      "group": "none",
+      "problemMatcher": [],
+      "detail": "Link node_modules to pnpm-lock.yaml - run it after a pull or a branch switch. CI installs with --frozen-lockfile, so a stale local tree only shows up here",
+      "presentation": { "focus": true, "reveal": "always", "clear": true },
+      "options": {
+        "statusbar": {
+          "color": "#cf6eff",
+          "label": "$(package) Install"
+        }
+      }
+    },
+    {
+      "label": "build",
+      "type": "shell",
+      "command": "pnpm run build",
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": ["$tsc"],
+      "detail": "tsc -p tsconfig.build.json - src/ to out/, specs excluded. F5 runs it first (launch.json preLaunchTask)",
+      "options": {
+        "statusbar": {
+          "color": "#22C1D6",
+          "label": "$(tools) Build"
+        }
+      }
+    },
+    {
+      "label": "watch",
+      "type": "shell",
+      "command": "pnpm run watch",
+      "group": "build",
+      "isBackground": true,
+      "problemMatcher": ["$tsc-watch"],
+      "detail": "tsc --watch over src/ - leave it running while you iterate, then reload the Extension Development Host window to pick up a change",
+      "options": {
+        "statusbar": { "hide": true }
+      }
+    },
+    {
+      "label": "typecheck",
+      "type": "shell",
+      "command": "pnpm run typecheck",
+      "icon": { "id": "type-hierarchy" },
+      "group": "test",
+      "problemMatcher": ["$tsc"],
+      "detail": "tsc -p tsconfig.json --noEmit - src/, specs included",
+      "options": {
+        "statusbar": {
+          "color": "#22d682",
+          "label": "TS"
+        }
+      }
+    },
+    {
+      "label": "test",
+      "type": "shell",
+      "command": "pnpm test",
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": [],
+      "detail": "node --import tsx --test src/**/*.test.ts - the unit specs, no editor needed",
+      "options": {
+        "statusbar": {
+          "color": "#22d682",
+          "label": "$(beaker) Test"
+        }
+      }
+    },
+    {
+      "label": "lint",
+      "type": "shell",
+      "command": "pnpm run lint",
+      "group": "test",
+      "problemMatcher": ["$eslint-stylish"],
+      "detail": "eslint .",
+      "options": {
+        "statusbar": {
+          "color": "#22C1D6",
+          "label": "$(check) Lint"
+        }
+      }
+    },
+    {
+      "label": "lint:fix",
+      "type": "shell",
+      "command": "pnpm run lint:fix",
+      "group": "build",
+      "problemMatcher": ["$eslint-stylish"],
+      "detail": "eslint . --fix",
+      "options": {
+        "statusbar": { "hide": true }
+      }
+    },
+    {
+      "label": "format",
+      "type": "shell",
+      "command": "pnpm run format",
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "prettier --write .",
+      "options": {
+        "statusbar": {
+          "color": "#ca9b3d",
+          "label": "$(paintcan) Format"
+        }
+      }
+    },
+    {
+      "label": "format:check",
+      "type": "shell",
+      "command": "pnpm run format:check",
+      "group": "test",
+      "problemMatcher": [],
+      "detail": "prettier --check .",
+      "options": {
+        "statusbar": { "hide": true }
+      }
+    },
+    {
+      "label": "check (build + typecheck + lint + format:check + test)",
+      "type": "shell",
+      "command": "pnpm run check",
+      "group": "test",
+      "problemMatcher": [],
+      "detail": "The fast CI gates, in order, via `pnpm check`. The VSIX contents check is the CI job it leaves out",
+      "options": {
+        "statusbar": {
+          "color": "#a4ca3d",
+          "label": "$(checklist) Check"
+        }
+      }
+    },
+    {
+      "label": "package",
+      "type": "shell",
+      "command": "pnpm run package",
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "Build oregan-policy-manager-<version>.vsix (git-ignored). Install it into a throwaway profile with --user-data-dir and --extensions-dir - in your own profile it applies the policy for real",
+      "presentation": { "focus": true, "reveal": "always", "clear": true },
+      "options": {
+        "statusbar": {
+          "color": "#cf6eff",
+          "label": "$(archive) Package"
+        }
+      }
+    }
+  ]
+}

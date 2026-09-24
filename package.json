@@ -1,0 +1,51 @@
+{
+  "name": "oregan-policy-manager",
+  "displayName": "Oregan Policy Manager",
+  "description": "Keeps editor telemetry and GitHub Copilot off and points developers at Claude Code, as Oregan's Agentic AI Development Policy requires.",
+  "version": "0.1.0",
+  "publisher": "oregan",
+  "license": "UNLICENSED",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/OreganNetworks/vscode-policy-manager.git"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "extensionKind": ["ui"],
+  "main": "./out/extension.js",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    }
+  },
+  "scripts": {
+    "clean": "node -e \"require('node:fs').rmSync('out', { recursive: true, force: true })\"",
+    "build": "pnpm run clean && tsc -p tsconfig.build.json",
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "node --import tsx --test \"src/**/*.test.ts\"",
+    "check": "pnpm build && pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
+    "package": "pnpm run build && vsce package --no-dependencies"
+  },
+  "packageManager": "pnpm@10.30.3",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^20.19.43",
+    "@types/vscode": "1.90.0",
+    "@vscode/vsce": "^4.0.0",
+    "eslint": "^10.11.0",
+    "globals": "^17.12.0",
+    "prettier": "^3.9.9",
+    "tsx": "^4.23.15",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.70.1"
+  }
+}

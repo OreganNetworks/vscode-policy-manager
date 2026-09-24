@@ -1,0 +1,22 @@
+# Only the compiled extension, README.md, LICENSE and package.json go into the VSIX
+.claude/**
+.github/**
+.superpowers/**
+.vscode/**
+.vscode-test/**
+docs/**
+node_modules/**
+scripts/**
+src/**
+test/**
+out/**/*.map
+out/test/**
+.gitignore
+.nvmrc
+.prettierignore
+.prettierrc.json
+CLAUDE.md
+eslint.config.mjs
+pnpm-lock.yaml
+tsconfig*.json
+*.vsix
