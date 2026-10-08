@@ -10,7 +10,11 @@ const FIXTURES = ['vscjava.vscode-java-upgrade', 'ms-dotnettools.vscode-dotnet-m
 const VSCE = join(ROOT, 'node_modules', '.bin', process.platform === 'win32' ? 'vsce.cmd' : 'vsce')
 
 function run(command: string, args: string[], cwd = ROOT): void {
-  const result = spawnSync(command, args, { cwd, stdio: 'inherit' })
+  // The editor CLI and vsce are .cmd files on Windows, which only run through a shell, with every argument quoted
+  const result =
+    process.platform === 'win32'
+      ? spawnSync([command, ...args].map(arg => `"${arg}"`).join(' '), { cwd, shell: true, stdio: 'inherit' })
+      : spawnSync(command, args, { cwd, stdio: 'inherit' })
   if (result.status !== 0) throw new Error(`${command} ${args.join(' ')} exited with ${result.status}`)
 }
 

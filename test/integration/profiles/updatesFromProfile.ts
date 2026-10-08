@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import * as vscode from 'vscode'
 import { EXTENSION_ID, waitFor } from './manifest'
 
@@ -27,8 +28,9 @@ type CliInstall = {
  */
 export async function run(): Promise<void> {
   await waitFor(() => vscode.extensions.getExtension(EXTENSION_ID)?.isActive === true, 'activation in the profile')
+  // A file URL, as import() takes no Windows path
   const { cliInstallCommand, runCliInstall } = (await import(
-    join(env('OPM_TEST_REPO'), 'out/updater/cliInstall.js')
+    pathToFileURL(join(env('OPM_TEST_REPO'), 'out', 'updater', 'cliInstall.js')).href
   )) as CliInstall
   const ours = vscode.extensions.getExtension(EXTENSION_ID)!
   const command = cliInstallCommand({

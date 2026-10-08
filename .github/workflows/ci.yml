@@ -107,14 +107,24 @@ jobs:
           retention-days: 7
 
   integration:
-    name: Integration (VS Code ${{ matrix.vscode }})
-    runs-on: ubuntu-latest
+    # The Linux jobs keep the names the main ruleset requires
+    name: Integration (VS Code ${{ matrix.vscode }}${{ matrix.label }})
+    runs-on: ${{ matrix.os }}
     strategy:
-      # Report both editors even when one fails - a failure on only one of them is the useful signal.
+      # Report every editor and platform even when one fails - a failure on only one of them is the useful signal.
       fail-fast: false
       matrix:
         # The engines.vscode floor, and the current release (which ships Copilot Chat built in).
         vscode: ['1.90.0', stable]
+        # The editor CLI, and so the update install, sits in a different place on each platform
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            label: ''
+          - os: macos-latest
+            label: ', macOS'
+          - os: windows-latest
+            label: ', Windows'
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
@@ -123,6 +133,12 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: xvfb-run -a pnpm test:integration
+      # Linux runners have no display
+      - if: runner.os == 'Linux'
+        run: xvfb-run -a pnpm test:integration
+        env:
+          VSCODE_TEST_VERSION: ${{ matrix.vscode }}
+      - if: runner.os != 'Linux'
+        run: pnpm test:integration
         env:
           VSCODE_TEST_VERSION: ${{ matrix.vscode }}

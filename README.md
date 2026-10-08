@@ -176,9 +176,9 @@ Each of these is also a VS Code task (**Tasks: Run Task**), with status-bar
 buttons when the recommended `actboy168.tasks` extension is installed.
 
 Every pull request runs the `CI` workflow: lint, format, type-check, build,
-unit tests, the integration suite on VS Code 1.90.0 and stable (including the
-packaged VSIX installed into a named profile), and a package check that the
-VSIX holds only the extension. The VSIX is attached to the run
+unit tests, the integration suite on VS Code 1.90.0 and stable, on Linux, macOS
+and Windows (including the packaged VSIX installed into a named profile), and a
+package check that the VSIX holds only the extension. The VSIX is attached to the run
 as the `vsix` artifact.
 
 Nobody pushes to `main` directly. A pull request merges once those jobs pass
