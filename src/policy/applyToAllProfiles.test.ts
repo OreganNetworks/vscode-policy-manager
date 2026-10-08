@@ -44,14 +44,12 @@ describe('applyToAllProfiles', () => {
     ignored?: number
     /** The state reads as applied after this many reads, whatever the toggles do */
     appliedAfterReads?: number
-    toggleFails?: boolean
+    /** Toggles that throw "command not found" before one runs, the way 1.139 does until the command is registered */
+    missing?: number
   }
 
   /** Ports over a scope that `toggle` flips, the way the editor command does, with a sleep that only records */
-  function setup(
-    initial: boolean | undefined,
-    { appliedAfterReads, ignored = 0, toggleFails = false }: SetupOptions = {},
-  ) {
+  function setup(initial: boolean | undefined, { appliedAfterReads, ignored = 0, missing = 0 }: SetupOptions = {}) {
     let applied = initial
     let reads = 0
     let toggles = 0
@@ -70,8 +68,9 @@ describe('applyToAllProfiles', () => {
       },
       async toggle() {
         toggles++
-        if (toggleFails) throw new Error("command 'workbench.extensions.action.toggleApplyToAllProfiles' not found")
-        if (toggles > ignored) applied = !applied
+        if (toggles <= missing)
+          throw new Error("command 'workbench.extensions.action.toggleApplyToAllProfiles' not found")
+        if (toggles - missing > ignored) applied = !applied
       },
     }
     return { logger, options, sleeps, toggles: () => toggles }
@@ -111,11 +110,21 @@ describe('applyToAllProfiles', () => {
     assert.equal(t.toggles(), 0)
   })
 
-  it('logs and carries on when the editor has no such command', async () => {
-    const t = setup(false, { toggleFails: true })
+  it('tries again when the command is not registered yet', async () => {
+    const t = setup(false, { missing: 1 })
+    assert.equal(await applyToAllProfiles(t.options), 'applied')
+    assert.equal(t.toggles(), 2)
+    assert.deepEqual(t.sleeps, [5_000])
+  })
+
+  it('gives up after the last retry when the editor has no such command, and logs it once', async () => {
+    const t = setup(false, { missing: 99 })
     assert.equal(await applyToAllProfiles(t.options), 'failed')
-    assert.equal(t.toggles(), 1)
-    assert.ok(t.logger.lines.some(line => line.startsWith('warn:') && line.includes('(ignored)')))
+    assert.equal(t.toggles(), 3)
+    assert.deepEqual(t.sleeps, [5_000, 30_000])
+    const warnings = t.logger.lines.filter(line => line.startsWith('warn:'))
+    assert.equal(warnings.length, 1)
+    assert.match(warnings[0], /not found \(ignored\)$/)
   })
 
   it('gives up after the last retry when no toggle takes effect', async () => {

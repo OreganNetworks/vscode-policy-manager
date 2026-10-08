@@ -150,8 +150,9 @@ These are the ones that are easy to get wrong:
     `workbench.extensions.action.toggleApplyToAllProfiles` on itself. It is an
     internal command and a toggle: read `isApplicationScoped` from the
     `extensions.json` in the extensions folder first, and never run it when that
-    already reads as applied. VS Code 1.90 ignores it until its extension list
-    is loaded, hence the retries.
+    already reads as applied. It can be too early when the extension activates
+    (1.139 may not have registered it yet, 1.90 ignores it until its extension
+    list is loaded), hence the retries.
 15. **Switching the AI off restarts the extension host.** While Copilot Chat
     runs, writing `chat.disableAIFeatures: true` makes VS Code restart the
     extension host in the same moment, so a notification sent after the write

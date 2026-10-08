@@ -10,9 +10,10 @@ import { readFile } from 'node:fs/promises'
 import { describeError, type Logger } from '../logger'
 
 /*
- * VS Code 1.90 ignores the command until the workbench has loaded its list of installed extensions, which can be after
- * this extension activates.  The command only returns once it has written `extensions.json`, so a state that still
- * reads as not applied means it was ignored, and trying again is safe.
+ * The editor can be too early for the command when this extension activates: VS Code 1.139 may not have registered it
+ * yet ("command not found"), and 1.90 ignores it until the workbench has loaded its list of installed extensions.  The
+ * command only returns once it has written `extensions.json`, so a state that still reads as not applied means it did
+ * not run, and trying again is safe.
  */
 const RETRY_DELAYS_MS = [5_000, 30_000]
 
@@ -70,10 +71,10 @@ export async function readAppliedToAllProfiles(manifestPath: string, id: string)
 
 /**
  * Turns **Apply Extension to all Profiles** on unless it is already on, reading the state back after each toggle and
- * trying again after a delay when the editor ignored it.  The state is read before every toggle, so one that reads as
+ * trying again after a delay when the toggle did not run.  The state is read before every toggle, so one that reads as
  * applied is never toggled off.  Run once a session, so a developer who turns it off finds it on again in the next
- * window.  Never throws: an editor without the command (a fork, or a later VS Code that drops it) is logged and left
- * as it is.
+ * window.  Never throws: an editor that still has no such command after the last retry (a fork, or a later VS Code
+ * that drops it) is logged once and left as it is.
  */
 export async function applyToAllProfiles({
   isApplied,
@@ -88,9 +89,10 @@ export async function applyToAllProfiles({
     logger.debug('All profiles: already applied to all profiles')
     return 'already'
   }
+  let lastError: unknown
   for (const [attempt, delayMs] of [0, ...retryDelaysMs].entries()) {
     if (attempt) {
-      logger.debug(`All profiles: the editor ignored the command, trying again in ${delayMs / 1000} seconds`)
+      logger.debug(`All profiles: the command did not run, trying again in ${delayMs / 1000} seconds`)
       await sleep(delayMs)
       const now = await isApplied()
       if (now === undefined) return cannotTell(logger)
@@ -98,13 +100,18 @@ export async function applyToAllProfiles({
     }
     try {
       await toggle()
+      lastError = undefined
     } catch (error: unknown) {
-      logger.warn(`All profiles: could not apply this extension to all profiles - ${describeError(error)} (ignored)`)
-      return 'failed'
+      lastError = error
+      continue
     }
     if (await isApplied()) return applied(logger)
   }
-  logger.warn('All profiles: the command ran, but this extension is still not applied to all profiles')
+  if (lastError !== undefined) {
+    logger.warn(`All profiles: could not apply this extension to all profiles - ${describeError(lastError)} (ignored)`)
+  } else {
+    logger.warn('All profiles: the command ran, but this extension is still not applied to all profiles')
+  }
   return 'failed'
 }
 
