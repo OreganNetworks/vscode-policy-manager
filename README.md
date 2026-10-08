@@ -39,6 +39,10 @@ Manager** (`oregannetworks.oregan-policy-manager`), and it logs to the
 **Oregan Policy Manager** channel in the Output panel. If the window was
 already open, run **Developer: Reload Window**.
 
+The CLI in VS Code 1.140 and later prints a `DeprecationWarning` about
+`url.parse()` during every install. It comes from VS Code's own code, not this
+extension, and is harmless; `NODE_OPTIONS=--no-deprecation` hides it.
+
 The CLI installs into the Default profile. If you use
 [profiles](https://code.visualstudio.com/docs/configure/profiles), install it
 into one you use with `--profile "<name>"`, or open a window with the Default
@@ -208,6 +212,11 @@ enforcement: a developer can still uninstall it. Enforcement belongs to the
 org-level layers - GitHub enterprise Copilot licence control and device policy
 (`AllowedExtensions`, Copilot managed settings) - described under
 [IDE Configuration > Enforcement beyond the repository](https://oregannetworks.atlassian.net/wiki/spaces/AI/pages/4050452495/IDE+Configuration#Enforcement-beyond-the-repository).
+
+It covers the editor only. Nothing here reaches the terminal: GitHub's Copilot
+CLI keeps working next to Claude Code, and Claude Code's own telemetry and error
+reporting stay as Claude Code's settings leave them. Those belong to device
+management, for example Claude Code's `managed-settings.json`.
 
 It collects no data and reports compliance to nobody. The only outbound
 requests are GETs for the release manifest and the VSIX.

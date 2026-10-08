@@ -29,7 +29,10 @@ const editorArgs = clean
 const shell = process.platform === 'win32'
 const args = list => (shell ? list.map(arg => `"${arg}"`) : list)
 
+// The CLI of VS Code 1.140 and later prints a url.parse() deprecation warning from its own code on every install
+const env = { ...process.env, NODE_OPTIONS: [process.env.NODE_OPTIONS, '--no-deprecation'].filter(Boolean).join(' ') }
 const install = spawnSync('code', args([...editorArgs, '--install-extension', vsix, '--force']), {
+  env,
   shell,
   stdio: 'inherit',
 })
