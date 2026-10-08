@@ -82,7 +82,14 @@ describe('Oregan Policy Manager', () => {
   })
 
   it('leaves the managed settings and extensions out of Settings Sync', async function () {
-    if (inspect('settingsSync.ignoredSettings')?.defaultValue === undefined) return this.skip()
+    /*
+     * Settings Sync registers its settings from a workbench contribution, which can start after this extension has
+     * activated: on macOS with VS Code 1.141 it had not when the test ran.  The extension writes the lists again when
+     * they change, registration included, so wait for it before deciding the editor has no Settings Sync.
+     */
+    const registered = () => inspect('settingsSync.ignoredSettings')?.defaultValue !== undefined
+    await waitFor(registered, 'Settings Sync to register its settings', 10_000).catch(() => undefined)
+    if (!registered()) return this.skip()
     const listed = (key: string) => (inspect(key)?.globalValue as string[] | undefined) ?? []
     await waitFor(
       () =>
