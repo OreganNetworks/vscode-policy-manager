@@ -135,6 +135,30 @@ export async function applySetting({ logger, setting, store }: ApplySettingOptio
 }
 
 /**
+ * The AI settings an apply wrote, so the start-up notification goes out only when the policy has just switched
+ * something off.  On later start-ups every AI setting is already in line, and the list is empty.
+ *
+ * @param results   From {@link applyPolicy}.
+ * @param settings  Defaults to {@link MANAGED_SETTINGS}.
+ * @returns The keys from the `ai` group whose state is `applied`, in `results` order.
+ *
+ * @example
+ * findSwitchedOffAiSettings([
+ *   { key: 'telemetry.telemetryLevel', state: 'applied' },
+ *   { key: 'chat.disableAIFeatures', state: 'applied' },
+ *   { key: 'github.copilot.enable', state: 'unchanged' },
+ * ])
+ * // ['chat.disableAIFeatures']
+ */
+export function findSwitchedOffAiSettings(
+  results: readonly ApplyResult[],
+  settings: readonly ManagedSetting[] = MANAGED_SETTINGS,
+): string[] {
+  const aiKeys = new Set(settings.filter(setting => setting.group === 'ai').map(setting => setting.key))
+  return results.filter(result => result.state === 'applied' && aiKeys.has(result.key)).map(result => result.key)
+}
+
+/**
  * Bring every managed setting into line at user level.  Writes go one at a time - each one rewrites
  * the user `settings.json`, and concurrent writes to that file can fail.
  */

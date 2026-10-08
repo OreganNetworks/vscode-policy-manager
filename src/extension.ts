@@ -3,10 +3,10 @@ import * as vscode from 'vscode'
 import { createCopilotRemover, type ExtensionRegistry, type InstalledExtension } from './policy/removeCopilotExtensions'
 import { createDriftHandler } from './policy/keepSettings'
 import { aiFirstHostMessage, detectHost } from './host'
-import { IDE_CONFIGURATION_URL } from './links'
+import { IDE_CONFIGURATION_URL, POLICY_URL } from './links'
 import { describeError } from './logger'
 import { compareVersions } from './updater/manifest'
-import { applyPolicy, type SettingsStore } from './policy/settings'
+import { applyPolicy, findSwitchedOffAiSettings, type SettingsStore } from './policy/settings'
 import { CLAUDE_CODE_ID, claudeCodeMessage } from './policy/recommendClaudeCode'
 import { collectStatusSnapshot, formatStatusReport } from './status'
 import {
@@ -21,6 +21,7 @@ const OUTPUT_CHANNEL_NAME = 'Oregan Policy Manager'
 const UPDATER_STATE_KEY = 'updater'
 const READ_THE_POLICY = 'Read the policy'
 const RELOAD_WINDOW = 'Reload Window'
+const SHOW_DETAILS = 'Show Details'
 
 /**
  * Entry point.  Only this module imports `vscode`: it builds the ports the policy modules take, wires them together
@@ -102,7 +103,8 @@ export function activate(context: vscode.ExtensionContext): void {
   })
 
   async function startUp(): Promise<void> {
-    await applyPolicy({ logger: log, store })
+    const switchedOff = findSwitchedOffAiSettings(await applyPolicy({ logger: log, store }))
+    if (switchedOff.length) detach(log, 'AI notification', showAiSwitchedOff(log))
     await remover.run()
     const claudeCodeInstalled = registry.list().some(extension => extension.id.toLowerCase() === CLAUDE_CODE_ID)
     log.info(claudeCodeMessage({ cli: host.cli, installed: claudeCodeInstalled }).join('\n'))
@@ -200,6 +202,17 @@ async function showRemoved(names: readonly string[]): Promise<void> {
   if (choice === READ_THE_POLICY) await vscode.env.openExternal(vscode.Uri.parse(IDE_CONFIGURATION_URL))
   // An extension that had already activated keeps running until the window reloads
   if (choice === RELOAD_WINDOW) await vscode.commands.executeCommand('workbench.action.reloadWindow')
+}
+
+async function showAiSwitchedOff(log: vscode.LogOutputChannel): Promise<void> {
+  const choice = await vscode.window.showInformationMessage(
+    "Oregan Policy Manager switched off the editor's built-in AI and GitHub Copilot, as Oregan's Agentic AI " +
+      'Development Policy requires. Claude Code is the approved assistant.',
+    READ_THE_POLICY,
+    SHOW_DETAILS,
+  )
+  if (choice === READ_THE_POLICY) await vscode.env.openExternal(vscode.Uri.parse(POLICY_URL))
+  if (choice === SHOW_DETAILS) log.show(true)
 }
 
 async function showRestored(key: string): Promise<void> {

@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { applyPolicy, isRegistered, isSettingEqual, MANAGED_SETTINGS } from './settings'
+import {
+  applyPolicy,
+  type ApplyResult,
+  findSwitchedOffAiSettings,
+  isRegistered,
+  isSettingEqual,
+  MANAGED_SETTINGS,
+} from './settings'
 import { createFakeLogger } from '../testing/fakeLogger'
 import { createFakeStore, stockEntries } from '../testing/fakeSettingsStore'
 
@@ -101,5 +108,25 @@ describe('applyPolicy', () => {
     const store = createFakeStore(entries)
     await applyPolicy({ logger: createFakeLogger(), store })
     assert.ok(store.writes.includes('chat.disableAIFeatures'))
+  })
+})
+
+describe('findSwitchedOffAiSettings', () => {
+  it('lists the AI settings the apply wrote, and no telemetry setting', () => {
+    const results: ApplyResult[] = [
+      { key: 'telemetry.telemetryLevel', state: 'applied' },
+      { key: 'chat.disableAIFeatures', state: 'applied' },
+      { key: 'github.copilot.enable', state: 'applied' },
+    ]
+    assert.deepEqual(findSwitchedOffAiSettings(results), ['chat.disableAIFeatures', 'github.copilot.enable'])
+  })
+
+  it('leaves out an AI setting that was already in line, unregistered or refused', () => {
+    const results: ApplyResult[] = [
+      { key: 'chat.disableAIFeatures', state: 'unchanged' },
+      { key: 'github.copilot.enable', state: 'unregistered' },
+      { error: 'locked', key: 'chat.disableAIFeatures', state: 'failed' },
+    ]
+    assert.deepEqual(findSwitchedOffAiSettings(results), [])
   })
 })
