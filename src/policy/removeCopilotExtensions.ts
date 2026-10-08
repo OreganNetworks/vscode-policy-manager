@@ -81,12 +81,15 @@ export function findUnmanagedDependants(installed: readonly InstalledExtension[]
  *
  *  - `pending` holds IDs uninstalled this session that the editor still lists (some only go after a window reload)
  *  - `skipped` holds IDs that are built in, or whose uninstall was refused
+ *  - `blocked` holds the refused IDs that an extension outside the managed list depended on at the time
  *
- * An ID leaves both sets as soon as a pass finds it gone, so a later reinstall is removed again.
+ * An ID leaves every set as soon as a pass finds it gone, so a later reinstall is removed again.  A blocked ID is tried
+ * again once nothing outside the list depends on it, so removing the blocker removes it in the same session.
  */
 export function createCopilotRemover({ logger, notifyRemoved, registry }: CopilotRemoverOptions): CopilotRemover {
   const pending = new Set<string>()
   const skipped = new Set<string>()
+  const blocked = new Set<string>()
   let running: Promise<void> | undefined
   let rerun = false
 
@@ -96,6 +99,12 @@ export function createCopilotRemover({ logger, notifyRemoved, registry }: Copilo
     for (const id of [...pending, ...skipped]) {
       if (present.has(id)) continue
       pending.delete(id)
+      skipped.delete(id)
+      blocked.delete(id)
+    }
+    for (const id of blocked) {
+      if (findUnmanagedDependants(installed, id).length) continue
+      blocked.delete(id)
       skipped.delete(id)
     }
 
@@ -119,6 +128,7 @@ export function createCopilotRemover({ logger, notifyRemoved, registry }: Copilo
       } catch (error: unknown) {
         skipped.add(id)
         const blockers = findUnmanagedDependants(installed, id).map(dependant => dependant.id)
+        if (blockers.length) blocked.add(id)
         const blockedBy = blockers.length ? ` - ${blockers.join(', ')} depends on it` : ''
         logger.warn(`Could not remove ${extension.id}: ${describeError(error)}${blockedBy}`)
       }

@@ -48,6 +48,10 @@ dependants left when it goes:
 5. `github.copilot-chat`
 6. `github.copilot`
 
+When another extension that depends on one of these blocks its removal, the
+warning in the output channel names it. Uninstalling that extension lets the
+removal go ahead in the same window.
+
 ### Commands
 
 | Command | Action |

@@ -136,6 +136,28 @@ describe('createCopilotRemover', () => {
     assert.ok(logger.lines.some(line => line.startsWith('warn:') && line.includes('acme.chat-helper')))
   })
 
+  it('retries a refused uninstall once the dependant that blocked it has gone', async () => {
+    const failIds = ['github.copilot-chat']
+    const helper = ext('acme.chat-helper', { dependencies: ['github.copilot-chat'] })
+    const fake = createFakeRegistry([ext('github.copilot-chat'), helper], { failIds })
+    const { notified, remover } = createRemover(fake.registry)
+    await remover.run()
+    // The developer uninstalls the blocker, and the editor no longer refuses
+    failIds.length = 0
+    fake.setInstalled([ext('github.copilot-chat')])
+    await remover.run()
+    assert.deepEqual(fake.uninstalled, ['github.copilot-chat', 'github.copilot-chat'])
+    assert.deepEqual(notified, [['github.copilot-chat']])
+  })
+
+  it('does not retry a refused uninstall that nothing outside the list blocks', async () => {
+    const fake = createFakeRegistry([ext('github.copilot')], { failIds: ['github.copilot'] })
+    const { remover } = createRemover(fake.registry)
+    await remover.run()
+    await remover.run()
+    assert.deepEqual(fake.uninstalled, ['github.copilot'])
+  })
+
   it('does not uninstall or notify twice for an extension that stays listed until a reload', async () => {
     const fake = createFakeRegistry([ext('github.copilot')], { keepListed: true })
     const { notified, remover } = createRemover(fake.registry)
