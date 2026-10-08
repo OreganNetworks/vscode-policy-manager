@@ -18,6 +18,8 @@ function run(command: string, args: string[], cwd = ROOT): void {
  * installs the fake Copilot fixtures into a fresh profile, then runs the suite in the extension host.
  */
 async function main(): Promise<void> {
+  // A shell started by an extension (a Claude Code session) inherits it, and the editor then starts as plain Node
+  delete process.env.ELECTRON_RUN_AS_NODE
   const version = process.env.VSCODE_TEST_VERSION ?? '1.90.0'
   const extensionsDir = join(CACHE, 'extensions')
   const userDataDir = join(CACHE, 'user-data')
@@ -42,7 +44,7 @@ async function main(): Promise<void> {
 
   await runTests({
     extensionDevelopmentPath: ROOT,
-    extensionTestsEnv: { OPM_TEST_EXTENSIONS_DIR: extensionsDir },
+    extensionTestsEnv: { OPM_TEST_EXTENSIONS_DIR: extensionsDir, OPM_TEST_USER_DATA_DIR: userDataDir },
     extensionTestsPath: join(__dirname, 'suite'),
     launchArgs: [...profileArgs, '--disable-workspace-trust'],
     vscodeExecutablePath,

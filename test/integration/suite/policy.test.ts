@@ -1,8 +1,10 @@
-import { readFileSync } from 'node:fs'
+import assert from 'node:assert/strict'
+import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import * as vscode from 'vscode'
 
 const EXTENSION_ID = 'oregan.oregan-policy-manager'
+const LOG_FILE = join(EXTENSION_ID, 'Oregan Policy Manager.log')
 /** Managed fixtures (from `MANAGED_EXTENSIONS`), dependant first so removal order is exercised */
 const FIXTURE_IDS = ['ms-dotnettools.vscode-dotnet-modernize', 'vscjava.vscode-java-upgrade']
 
@@ -20,6 +22,15 @@ function extensionsDir(): string {
   const dir = process.env.OPM_TEST_EXTENSIONS_DIR
   if (!dir) throw new Error('OPM_TEST_EXTENSIONS_DIR is not set')
   return dir
+}
+
+/** The output channel as the editor logs it, under `<user-data-dir>/logs/<session>/window1/exthost/<id>/` */
+function readOutputLog(): string {
+  const dir = process.env.OPM_TEST_USER_DATA_DIR
+  if (!dir) throw new Error('OPM_TEST_USER_DATA_DIR is not set')
+  const logs = join(dir, 'logs')
+  const file = readdirSync(logs, { encoding: 'utf8', recursive: true }).find(path => path.endsWith(LOG_FILE))
+  return file ? readFileSync(join(logs, file), 'utf8') : ''
 }
 
 /** IDs the on-disk manifest currently lists as installed, lower-cased - `undefined` while the file is mid-write */
@@ -86,7 +97,11 @@ describe('Oregan Policy Manager', () => {
     await waitFor(() => inspect('telemetry.telemetryLevel')?.globalValue === 'off', 'the drift restore')
   })
 
-  it('shows the status report', async () => {
+  it('reports a compliant machine in the output channel', async () => {
     await vscode.commands.executeCommand('oregan.showPolicyStatus')
+    let log = ''
+    // The editor writes the channel to disk shortly after the command returns
+    await waitFor(() => (log = readOutputLog()).includes('Overall:'), 'the status report in the output log')
+    assert.match(log, /^Overall: compliant$/m)
   })
 })
