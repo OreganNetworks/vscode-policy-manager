@@ -35,9 +35,8 @@ what the CSO signs off.
 
 ## Status
 
-Implemented on `feat/TMP-7075-policy-manager`, not yet released. The
-implementation plan that built it is attached to TMP-7075 as
-`oregan-vscode-extension-implementation-plan.md`.
+Implemented, not yet released. The implementation plan that built it is
+attached to TMP-7075 as `oregan-vscode-extension-implementation-plan.md`.
 
 ## Commands
 
@@ -163,5 +162,8 @@ been answered before building on an assumption:
    to push, and each push needs its own go-ahead.
 5. **One requirement per file.** Each requirement lives in its own module -
    under `src/policy/` for what the policy enforces - starting with a
-   `REQUIREMENT: <name>` header. Don't cite the spec's FR numbers in code or
-   docs: they mean nothing once the spec is revised.
+   `REQUIREMENT: <name>` header. Requirements that share one table can share
+   its module, with a header line each: `settings.ts` holds telemetry off and
+   the built-in AI settings, both rows of `MANAGED_SETTINGS`. Don't cite the
+   spec's FR numbers in code or docs: they mean nothing once the spec is
+   revised.
