@@ -81,6 +81,7 @@ src/
     download.ts           # bounded HTTPS GET, verified download
     lock.ts               # single-window cycle lock
     releaseManifest.test.ts  # release script output against what the updater accepts
+  notices.ts      # notifications saved across an extension host restart
   logger.ts       # Logger port, describeError
   links.ts        # policy and IDE Configuration URLs
   testing/        # spec helpers, excluded from the build
@@ -151,6 +152,11 @@ These are the ones that are easy to get wrong:
     `extensions.json` in the extensions folder first, and never run it when that
     already reads as applied. VS Code 1.90 ignores it until its extension list
     is loaded, hence the retries.
+15. **Switching the AI off restarts the extension host.** While Copilot Chat
+    runs, writing `chat.disableAIFeatures: true` makes VS Code restart the
+    extension host in the same moment, so a notification sent after the write
+    is lost. Save it with `notices.ts` before the write; the next session shows
+    what the old one could not.
 
 ## Open questions
 

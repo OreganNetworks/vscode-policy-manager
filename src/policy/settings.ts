@@ -135,6 +135,28 @@ export async function applySetting({ logger, setting, store }: ApplySettingOptio
 }
 
 /**
+ * The AI settings an apply is about to write: registered, and with a user value other than the policy value.  The
+ * start-up notification is saved before the apply when this is not empty, since turning the built-in AI off can restart
+ * the extension host as soon as the setting is written.
+ *
+ * @param store     The settings to read.
+ * @param settings  Defaults to {@link MANAGED_SETTINGS}.
+ * @returns The keys from the `ai` group that {@link applySetting} would write, in table order.
+ */
+export function findAiSettingsOutOfLine(
+  store: Pick<SettingsStore, 'inspect'>,
+  settings: readonly ManagedSetting[] = MANAGED_SETTINGS,
+): string[] {
+  return settings
+    .filter(({ group, key, value }) => {
+      if (group !== 'ai') return false
+      const inspection = store.inspect(key)
+      return isRegistered(inspection) && !isSettingEqual(inspection?.globalValue, value)
+    })
+    .map(setting => setting.key)
+}
+
+/**
  * The AI settings an apply wrote, so the start-up notification goes out only when the policy has just switched
  * something off.  On later start-ups every AI setting is already in line, and the list is empty.
  *

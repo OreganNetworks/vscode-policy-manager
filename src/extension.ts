@@ -10,8 +10,16 @@ import { createDriftHandler } from './policy/keepSettings'
 import { aiFirstHostMessage, detectHost } from './host'
 import { IDE_CONFIGURATION_URL, POLICY_URL } from './links'
 import { describeError } from './logger'
+import {
+  AI_SWITCHED_OFF,
+  createNotices,
+  type Notice,
+  noticeForRestore,
+  type NoticeStore,
+  type SavedNotice,
+} from './notices'
 import { compareVersions } from './updater/manifest'
-import { applyPolicy, findSwitchedOffAiSettings, type SettingsStore } from './policy/settings'
+import { applyPolicy, findAiSettingsOutOfLine, findSwitchedOffAiSettings, type SettingsStore } from './policy/settings'
 import { CLAUDE_CODE_ID, claudeCodeMessage } from './policy/recommendClaudeCode'
 import { collectStatusSnapshot, formatStatusReport } from './status'
 import {
@@ -24,6 +32,7 @@ import {
 
 const OUTPUT_CHANNEL_NAME = 'Oregan Policy Manager'
 const UPDATER_STATE_KEY = 'updater'
+const NOTICES_STATE_KEY = 'notices'
 const READ_THE_POLICY = 'Read the policy'
 const RELOAD_WINDOW = 'Reload Window'
 const SHOW_DETAILS = 'Show Details'
@@ -39,6 +48,11 @@ export function activate(context: vscode.ExtensionContext): void {
   const store = createSettingsStore()
   const registry = createExtensionRegistry()
   const updaterCache = createUpdaterCache(context)
+  const notices = createNotices({
+    logger: log,
+    show: notice => showNotice(notice, log),
+    store: createNoticeStore(context),
+  })
 
   const remover = createCopilotRemover({
     logger: log,
@@ -46,8 +60,12 @@ export function activate(context: vscode.ExtensionContext): void {
     registry,
   })
   const onConfigurationChanged = createDriftHandler({
+    afterFirstRestore(key, restored) {
+      if (restored) notices.show(noticeForRestore(key))
+      else detach(log, 'Drift notification', notices.forget(noticeForRestore(key)))
+    },
+    beforeFirstRestore: key => notices.save(noticeForRestore(key)),
     logger: log,
-    onFirstRestore: key => detach(log, 'Drift notification', showRestored(key)),
     store,
   })
   const updater = createUpdater({
@@ -112,8 +130,13 @@ export function activate(context: vscode.ExtensionContext): void {
   })
 
   async function startUp(): Promise<void> {
+    notices.showSaved()
+    // Saved before the write, which can restart the extension host when Copilot Chat is running
+    const switchingOff = findAiSettingsOutOfLine(store).length > 0
+    if (switchingOff) await notices.save(AI_SWITCHED_OFF)
     const switchedOff = findSwitchedOffAiSettings(await applyPolicy({ logger: log, store }))
-    if (switchedOff.length) detach(log, 'AI notification', showAiSwitchedOff(log))
+    if (switchedOff.length) notices.show(AI_SWITCHED_OFF)
+    else if (switchingOff) await notices.forget(AI_SWITCHED_OFF)
     await remover.run()
     const claudeCodeInstalled = registry.list().some(extension => extension.id.toLowerCase() === CLAUDE_CODE_ID)
     log.info(claudeCodeMessage({ cli: host.cli, installed: claudeCodeInstalled }).join('\n'))
@@ -207,6 +230,16 @@ function createProfileScope(context: vscode.ExtensionContext, log: vscode.LogOut
   }
 }
 
+/** Per window, and kept when the extension host restarts */
+function createNoticeStore(context: vscode.ExtensionContext): NoticeStore {
+  return {
+    get: () => context.workspaceState.get<SavedNotice[]>(NOTICES_STATE_KEY),
+    async set(value) {
+      await context.workspaceState.update(NOTICES_STATE_KEY, value)
+    },
+  }
+}
+
 function createUpdaterCache(context: vscode.ExtensionContext): UpdaterCacheStore {
   return {
     get: () => context.globalState.get<UpdaterCache>(UPDATER_STATE_KEY) ?? {},
@@ -229,6 +262,15 @@ async function showRemoved(names: readonly string[]): Promise<void> {
   if (choice === READ_THE_POLICY) await vscode.env.openExternal(vscode.Uri.parse(IDE_CONFIGURATION_URL))
   // An extension that had already activated keeps running until the window reloads
   if (choice === RELOAD_WINDOW) await vscode.commands.executeCommand('workbench.action.reloadWindow')
+}
+
+async function showNotice(notice: Notice, log: vscode.LogOutputChannel): Promise<void> {
+  switch (notice.kind) {
+    case 'ai-switched-off':
+      return showAiSwitchedOff(log)
+    case 'setting-restored':
+      return showRestored(notice.key)
+  }
 }
 
 async function showAiSwitchedOff(log: vscode.LogOutputChannel): Promise<void> {

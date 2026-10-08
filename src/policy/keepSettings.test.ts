@@ -35,44 +35,51 @@ describe('createDriftHandler', () => {
     return entries
   }
 
-  it('restores a drifted user value and reports it', async () => {
+  /** Hooks that record their calls, with how many writes had happened by then */
+  function recordingHooks(store: { writes: string[] }) {
+    const events: string[] = []
+    return {
+      afterFirstRestore(key: string, restored: boolean) {
+        events.push(`after ${key}: ${restored ? 'restored' : 'not restored'}`)
+      },
+      async beforeFirstRestore(key: string) {
+        events.push(`before ${key}: ${store.writes.length} writes`)
+      },
+      events,
+    }
+  }
+
+  const NO_HOOKS = { afterFirstRestore: () => undefined, beforeFirstRestore: async () => undefined }
+
+  it('restores a drifted user value, with the first hook done before the write', async () => {
     const entries = compliantEntries()
     entries[TELEMETRY] = { defaultValue: 'all', globalValue: 'all' }
     const store = createFakeStore(entries)
-    const restored: string[] = []
-    const onChange = createDriftHandler({
-      logger: createFakeLogger(),
-      onFirstRestore: key => restored.push(key),
-      store,
-    })
-    await onChange(only(TELEMETRY))
+    const hooks = recordingHooks(store)
+    await createDriftHandler({ ...hooks, logger: createFakeLogger(), store })(only(TELEMETRY))
     assert.deepEqual(store.writes, [TELEMETRY])
     assert.equal(entries[TELEMETRY].globalValue, 'off')
-    assert.deepEqual(restored, [TELEMETRY])
+    assert.deepEqual(hooks.events, [`before ${TELEMETRY}: 0 writes`, `after ${TELEMETRY}: restored`])
   })
 
-  it('reports only the first restore of the session', async () => {
+  it('calls the hooks for the first restore of the session only', async () => {
     const entries = compliantEntries()
     const store = createFakeStore(entries)
-    const restored: string[] = []
-    const onChange = createDriftHandler({
-      logger: createFakeLogger(),
-      onFirstRestore: key => restored.push(key),
-      store,
-    })
+    const hooks = recordingHooks(store)
+    const onChange = createDriftHandler({ ...hooks, logger: createFakeLogger(), store })
     entries[TELEMETRY] = { defaultValue: 'all', globalValue: 'all' }
     await onChange(only(TELEMETRY))
     entries[AI] = { defaultValue: false, globalValue: false }
     await onChange(only(AI))
     assert.deepEqual(store.writes, [TELEMETRY, AI])
-    assert.deepEqual(restored, [TELEMETRY])
+    assert.deepEqual(hooks.events, [`before ${TELEMETRY}: 0 writes`, `after ${TELEMETRY}: restored`])
   })
 
   it('ignores keys the change did not touch', async () => {
     const entries = compliantEntries()
     entries[TELEMETRY] = { defaultValue: 'all', globalValue: 'all' }
     const store = createFakeStore(entries)
-    await createDriftHandler({ logger: createFakeLogger(), onFirstRestore: () => undefined, store })(only(AI))
+    await createDriftHandler({ ...NO_HOOKS, logger: createFakeLogger(), store })(only(AI))
     assert.deepEqual(store.writes, [])
   })
 
@@ -80,7 +87,7 @@ describe('createDriftHandler', () => {
     const entries = compliantEntries()
     entries[AI] = { defaultValue: false, globalValue: true, workspaceValue: false }
     const store = createFakeStore(entries)
-    await createDriftHandler({ logger: createFakeLogger(), onFirstRestore: () => undefined, store })(only(AI))
+    await createDriftHandler({ ...NO_HOOKS, logger: createFakeLogger(), store })(only(AI))
     assert.deepEqual(store.writes, [])
   })
 
@@ -88,7 +95,7 @@ describe('createDriftHandler', () => {
     const entries = compliantEntries()
     delete entries['redhat.telemetry.enabled']
     const store = createFakeStore(entries)
-    const onChange = createDriftHandler({ logger: createFakeLogger(), onFirstRestore: () => undefined, store })
+    const onChange = createDriftHandler({ ...NO_HOOKS, logger: createFakeLogger(), store })
     await onChange(only('redhat.telemetry.enabled'))
     assert.deepEqual(store.writes, [])
     entries['redhat.telemetry.enabled'] = { defaultValue: null }
@@ -96,18 +103,21 @@ describe('createDriftHandler', () => {
     assert.deepEqual(store.writes, ['redhat.telemetry.enabled'])
   })
 
-  it('does not report a restore whose write the editor refused', async () => {
+  it('says when the first write was refused, and treats the next restore as the first', async () => {
     const entries = compliantEntries()
     entries[TELEMETRY] = { defaultValue: 'all', globalValue: 'all' }
     const store = createFakeStore(entries, [TELEMETRY])
-    const restored: string[] = []
-    const onChange = createDriftHandler({
-      logger: createFakeLogger(),
-      onFirstRestore: key => restored.push(key),
-      store,
-    })
+    const hooks = recordingHooks(store)
+    const onChange = createDriftHandler({ ...hooks, logger: createFakeLogger(), store })
     await onChange(only(TELEMETRY))
-    assert.deepEqual(restored, [])
+    entries[AI] = { defaultValue: false, globalValue: false }
+    await onChange(only(AI))
+    assert.deepEqual(hooks.events, [
+      `before ${TELEMETRY}: 0 writes`,
+      `after ${TELEMETRY}: not restored`,
+      `before ${AI}: 0 writes`,
+      `after ${AI}: restored`,
+    ])
   })
 
   it('stops restoring a key another writer keeps changing, and says so once', async () => {
@@ -118,7 +128,7 @@ describe('createDriftHandler', () => {
       guard: createBurstGuard({ limit: 2, windowMs: 10_000 }),
       logger,
       now: () => 0,
-      onFirstRestore: () => undefined,
+      ...NO_HOOKS,
       store,
     })
     for (let round = 0; round < 4; round++) {

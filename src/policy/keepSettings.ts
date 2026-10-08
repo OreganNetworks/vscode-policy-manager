@@ -61,9 +61,14 @@ export type DriftHandler = (affects: (key: string) => boolean) => Promise<void>
 
 /** Arguments to {@link createDriftHandler} */
 export type DriftHandlerOptions = {
+  /** After the first restore of the session; `restored` is false when the editor refused the write */
+  afterFirstRestore: (key: string, restored: boolean) => void
+  /**
+   * Awaited before the first restore of the session - the policy allows one message per session.  Turning the
+   * built-in AI off can restart the extension host as soon as the setting is written, so the message is saved here.
+   */
+  beforeFirstRestore: (key: string) => Promise<void>
   logger: Logger
-  /** Called for the first restore of the session only - the policy allows one message per session */
-  onFirstRestore: (key: string) => void
   store: SettingsStore
   guard?: BurstGuard
   now?: () => number
@@ -78,10 +83,11 @@ export type DriftHandlerOptions = {
  * workspace settings belong to the repository.
  */
 export function createDriftHandler({
+  afterFirstRestore,
+  beforeFirstRestore,
   guard = createBurstGuard(DRIFT_BURST),
   logger,
   now = Date.now,
-  onFirstRestore,
   settings = MANAGED_SETTINGS,
   store,
 }: DriftHandlerOptions): DriftHandler {
@@ -97,10 +103,12 @@ export function createDriftHandler({
         logger.error(`${setting.key}: restored too often - something else keeps changing it, left alone this session`)
         continue
       }
+      const first = !reported
+      if (first) await beforeFirstRestore(setting.key)
       const result = await applySetting({ logger, setting, store })
-      if (result.state !== 'applied' || reported) continue
-      reported = true
-      onFirstRestore(setting.key)
+      if (!first) continue
+      reported = result.state === 'applied'
+      afterFirstRestore(setting.key, reported)
     }
   }
 }

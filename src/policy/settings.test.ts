@@ -3,6 +3,7 @@ import { describe, it } from 'node:test'
 import {
   applyPolicy,
   type ApplyResult,
+  findAiSettingsOutOfLine,
   findSwitchedOffAiSettings,
   isRegistered,
   isSettingEqual,
@@ -128,5 +129,21 @@ describe('findSwitchedOffAiSettings', () => {
       { error: 'locked', key: 'chat.disableAIFeatures', state: 'failed' },
     ]
     assert.deepEqual(findSwitchedOffAiSettings(results), [])
+  })
+})
+
+describe('findAiSettingsOutOfLine', () => {
+  it('lists the registered AI settings whose user value is not the policy value', () => {
+    const entries = stockEntries()
+    entries['github.copilot.enable'] = { ...entries['github.copilot.enable'], globalValue: { '*': false } }
+    entries['telemetry.telemetryLevel'] = { ...entries['telemetry.telemetryLevel'], globalValue: 'all' }
+    delete entries['redhat.telemetry.enabled']
+    assert.deepEqual(findAiSettingsOutOfLine(createFakeStore(entries)), ['chat.disableAIFeatures'])
+  })
+
+  it('leaves out an AI setting this editor has not registered', () => {
+    const entries = stockEntries()
+    delete entries['chat.disableAIFeatures']
+    assert.deepEqual(findAiSettingsOutOfLine(createFakeStore(entries)), ['github.copilot.enable'])
   })
 })
