@@ -81,6 +81,18 @@ describe('Oregan Policy Manager', () => {
     await waitFor(() => inspect('chat.disableAIFeatures')?.globalValue === true, 'chat.disableAIFeatures')
   })
 
+  it('leaves the managed settings and extensions out of Settings Sync', async function () {
+    if (inspect('settingsSync.ignoredSettings')?.defaultValue === undefined) return this.skip()
+    const listed = (key: string) => (inspect(key)?.globalValue as string[] | undefined) ?? []
+    await waitFor(
+      () =>
+        ['chat.disableAIFeatures', 'telemetry.telemetryLevel'].every(key =>
+          listed('settingsSync.ignoredSettings').includes(key),
+        ) && ['github.copilot', EXTENSION_ID].every(id => listed('settingsSync.ignoredExtensions').includes(id)),
+      'the Settings Sync lists',
+    )
+  })
+
   it('removes the managed fixtures, dependant first', async () => {
     await waitFor(() => FIXTURE_IDS.every(id => !vscode.extensions.getExtension(id)), 'the fixtures to be uninstalled')
     // The editor writes extensions.json and .obsolete asynchronously, after the live view already updates

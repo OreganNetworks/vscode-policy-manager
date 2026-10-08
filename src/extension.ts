@@ -6,7 +6,13 @@ import {
   type ApplyToAllProfilesOptions,
   readAppliedToAllProfiles,
 } from './policy/applyToAllProfiles'
-import { createCopilotRemover, type ExtensionRegistry, type InstalledExtension } from './policy/removeCopilotExtensions'
+import { IGNORED_EXTENSIONS_KEY, IGNORED_SETTINGS_KEY, keepOutOfSync } from './policy/keepOutOfSync'
+import {
+  createCopilotRemover,
+  type ExtensionRegistry,
+  type InstalledExtension,
+  MANAGED_EXTENSIONS,
+} from './policy/removeCopilotExtensions'
 import { createDriftHandler } from './policy/keepSettings'
 import { aiFirstHostMessage, detectHost, type HostInfo } from './host'
 import { IDE_CONFIGURATION_URL, POLICY_URL } from './links'
@@ -21,7 +27,13 @@ import {
 } from './notices'
 import { cliInstallCommand, runCliInstall } from './updater/cliInstall'
 import { compareVersions } from './updater/manifest'
-import { applyPolicy, findAiSettingsOutOfLine, findSwitchedOffAiSettings, type SettingsStore } from './policy/settings'
+import {
+  applyPolicy,
+  findAiSettingsOutOfLine,
+  findSwitchedOffAiSettings,
+  MANAGED_SETTINGS,
+  type SettingsStore,
+} from './policy/settings'
 import { CLAUDE_CODE_ID, claudeCodeMessage } from './policy/recommendClaudeCode'
 import { collectStatusSnapshot, formatStatusReport } from './status'
 import {
@@ -50,6 +62,13 @@ export function activate(context: vscode.ExtensionContext): void {
   const store = createSettingsStore()
   const registry = createExtensionRegistry()
   const updaterCache = createUpdaterCache(context)
+  const syncExclusions = {
+    // This extension too: extension sync must not install a Marketplace extension with its ID on another machine
+    extensionIds: [...MANAGED_EXTENSIONS, context.extension.id],
+    logger: log,
+    settingKeys: MANAGED_SETTINGS.map(setting => setting.key),
+    store,
+  }
   const notices = createNotices({
     logger: log,
     show: notice => showNotice(notice, log),
@@ -97,13 +116,15 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('oregan.checkForUpdates', async function checkForUpdates() {
       showCheckResult(await updater.check({ force: true }), version, log)
     }),
-    vscode.workspace.onDidChangeConfiguration(event =>
+    vscode.workspace.onDidChangeConfiguration(event => {
       detach(
         log,
         'Drift check',
         onConfigurationChanged(key => event.affectsConfiguration(key)),
-      ),
-    ),
+      )
+      if (event.affectsConfiguration(IGNORED_SETTINGS_KEY) || event.affectsConfiguration(IGNORED_EXTENSIONS_KEY))
+        detach(log, 'Settings Sync lists', keepOutOfSync(syncExclusions))
+    }),
     vscode.extensions.onDidChange(() => detach(log, 'Copilot removal', remover.run())),
   )
 
@@ -133,6 +154,8 @@ export function activate(context: vscode.ExtensionContext): void {
 
   async function startUp(): Promise<void> {
     notices.showSaved()
+    // Before the policy writes anything, so none of it goes to the other machines on the sync account
+    await keepOutOfSync(syncExclusions)
     // Saved before the write, which can restart the extension host when Copilot Chat is running
     const switchingOff = findAiSettingsOutOfLine(store).length > 0
     if (switchingOff) await notices.save(AI_SWITCHED_OFF)

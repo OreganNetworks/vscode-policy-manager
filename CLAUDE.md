@@ -69,6 +69,7 @@ src/
   extension.ts    # the only module that imports vscode: ports, commands, notifications
   policy/         # what the policy enforces, one requirement per file
     applyToAllProfiles.ts       # every profile
+    keepOutOfSync.ts            # out of Settings Sync
     settings.ts                 # telemetry off; built-in AI and Copilot settings off
     keepSettings.ts             # keeping settings in place
     removeCopilotExtensions.ts  # Copilot extension removal
@@ -163,6 +164,11 @@ These are the ones that are easy to get wrong:
     extension host in the same moment, so a notification sent after the write
     is lost. Save it with `notices.ts` before the write; the next session shows
     what the old one could not.
+16. **Out of Settings Sync.** The managed keys go in
+    `settingsSync.ignoredSettings` and the managed extensions (and this one) in
+    `settingsSync.ignoredExtensions`, merged with the developer's own entries.
+    Otherwise a change made on another machine on the same sync account comes
+    back as drift, and restoring an AI setting restarts the extension host.
 
 ## Open questions
 
