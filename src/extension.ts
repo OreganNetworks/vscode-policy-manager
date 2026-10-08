@@ -199,7 +199,7 @@ async function showRemoved(names: readonly string[]): Promise<void> {
 
 async function showRestored(key: string): Promise<void> {
   await vscode.window.showInformationMessage(
-    `Oregan Policy Manager changed ${key} back to the value Oregan's Agentic AI Development Policy requires. ` +
+    `Oregan Policy Manager set ${key} to the value Oregan's Agentic AI Development Policy requires. ` +
       'Details are in the Oregan Policy Manager output.',
   )
 }
