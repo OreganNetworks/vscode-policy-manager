@@ -1,15 +1,17 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, stat } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { stat } from 'node:fs/promises'
 import { join } from 'node:path'
-import { describe, it } from 'node:test'
+import { after, describe, it } from 'node:test'
 import { takeOverStaleLock, tryAcquireCycleLock } from './lock'
+import { createTempDirs } from '../testing/tempDirs'
 
 const TTL = 60_000
+const temp = createTempDirs('opm-lock-')
+after(temp.removeAll)
 
 /** A lock path under a directory that doesn't exist yet */
 async function lockPath(): Promise<string> {
-  return join(await mkdtemp(join(tmpdir(), 'opm-lock-')), 'globalStorage', 'update-check.lock')
+  return join(await temp.make(), 'globalStorage', 'update-check.lock')
 }
 
 describe('tryAcquireCycleLock', () => {

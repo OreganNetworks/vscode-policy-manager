@@ -1,16 +1,19 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, writeFile } from 'node:fs/promises'
+import { writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { describe, it } from 'node:test'
+import { after, describe, it } from 'node:test'
 import { applyToAllProfiles, readAppliedToAllProfiles } from './applyToAllProfiles'
 import { createFakeLogger } from '../testing/fakeLogger'
+import { createTempDirs } from '../testing/tempDirs'
 
 const ID = 'oregan.oregan-policy-manager'
+const temp = createTempDirs('opm-profiles-')
+after(temp.removeAll)
 
 /** An `extensions.json` for the default profile with `entries`, in a fresh directory */
 async function writeManifest(entries: unknown): Promise<string> {
-  const path = join(await mkdtemp(join(tmpdir(), 'opm-profiles-')), 'extensions.json')
+  const path = join(await temp.make(), 'extensions.json')
   await writeFile(path, JSON.stringify(entries))
   return path
 }

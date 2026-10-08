@@ -1,14 +1,16 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile, stat } from 'node:fs/promises'
+import { readFile, stat } from 'node:fs/promises'
 import { createServer, type Server } from 'node:http'
 import { type AddressInfo } from 'node:net'
-import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { after, before, describe, it } from 'node:test'
 import { downloadVerified, type HttpGetOptions, httpGet, sha256 } from './download'
+import { createTempDirs } from '../testing/tempDirs'
 
 const BODY = Buffer.from('hello')
 const ETAG = '"abc"'
+const temp = createTempDirs('opm-download-')
+after(temp.removeAll)
 
 describe('download', () => {
   let server: Server
@@ -92,7 +94,7 @@ describe('download', () => {
 
   describe('downloadVerified', () => {
     it('writes the file when the digest matches', async () => {
-      const dest = join(await mkdtemp(join(tmpdir(), 'opm-download-')), 'updates', 'x.vsix')
+      const dest = join(await temp.make(), 'updates', 'x.vsix')
       await downloadVerified({
         dest,
         expectedSha256: sha256(BODY),
@@ -105,7 +107,7 @@ describe('download', () => {
     })
 
     it('writes nothing when the digest does not match', async () => {
-      const dest = join(await mkdtemp(join(tmpdir(), 'opm-download-')), 'x.vsix')
+      const dest = join(await temp.make(), 'x.vsix')
       await assert.rejects(
         downloadVerified({
           dest,

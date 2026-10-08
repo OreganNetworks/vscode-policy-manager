@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, stat, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { mkdir, stat, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import { describe, it } from 'node:test'
+import { after, describe, it } from 'node:test'
 import { type DownloadOptions, type HttpGetOptions, type HttpResult } from './download'
 import { createFakeLogger } from '../testing/fakeLogger'
+import { createTempDirs } from '../testing/tempDirs'
 import {
   createUpdater,
   MANIFEST_URL,
@@ -17,6 +17,8 @@ import {
 
 const NEWER = { sha256: 'a'.repeat(64), version: '0.2.0', vsix: 'oregan-policy-manager-0.2.0.vsix' }
 const CURRENT = { sha256: 'b'.repeat(64), version: '0.1.0', vsix: 'oregan-policy-manager-0.1.0.vsix' }
+const temp = createTempDirs('opm-updater-')
+after(temp.removeAll)
 
 const manifestResponse = (manifest: object, etag = '"v1"'): HttpResult => ({
   body: Buffer.from(JSON.stringify(manifest)),
@@ -29,7 +31,7 @@ const manifestResponse = (manifest: object, etag = '"v1"'): HttpResult => ({
  * the cycle lock is real, in a fresh directory.
  */
 async function setup(responses: HttpResult[], overrides: Partial<UpdaterOptions> = {}) {
-  const storageDir = await mkdtemp(join(tmpdir(), 'opm-updater-'))
+  const storageDir = await temp.make()
   const logger = createFakeLogger()
   const requests: HttpGetOptions[] = []
   const downloads: DownloadOptions[] = []
