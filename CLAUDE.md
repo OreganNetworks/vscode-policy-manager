@@ -20,12 +20,12 @@ description.
 ## Source of truth
 
 The design is not in this repo. It lives in two attachments on TMP-7075. A
-re-upload carries a date prefix (`2026-09-24_...`), so read the newest of each:
+re-upload carries a date prefix (`2026-10-08_...`), so read the newest of each:
 
-- `oregan-vscode-extension-spec.md` - Draft v0.6: the functional requirements,
-  manifest essentials and code layout
+- `oregan-vscode-extension-spec.md` - Draft v0.7: the functional requirements,
+  manifest essentials and code layout; section 9 lists the changes since v0.6
 - `oregan-vscode-extension-implementation-plan.md` - the task-by-task
-  implementation plan
+  implementation plan, with the work since the first review as Tasks 12 to 19
 
 Read both before implementing anything. Fetch them through the Atlassian MCP:
 `getJiraIssue` with `fields: ["attachment"]` for the attachment ids, then
@@ -167,12 +167,17 @@ been answered before building on an assumption:
 1. CSO sign-off for company-wide distribution, and for making the release repo
    public. If it has to stay private, the self-update switches to authenticated
    requests via `vscode.authentication.getSession('github', ['repo'])`.
-2. Is Claude Code on Open VSX, so the install instruction works in VSCodium,
-   Cursor and Windsurf?
+2. Answered: Claude Code is on Open VSX (`Anthropic.claude-code`), so the
+   install instruction works in VSCodium, Cursor and Windsurf.
 3. Each fork's VS Code base version, the resulting `engines.vscode` floor, and
-   whether each fork registers `chat.disableAIFeatures`.
+   whether each fork registers `chat.disableAIFeatures` and has the command
+   that applies the extension to all profiles.
 4. Are Cursor and Windsurf in use, and will the CSO approve their built-in AI
    or steer those developers to VS Code or VSCodium?
+5. Who owns the accounts that register the `oregannetworks` publisher on the
+   VS Code Marketplace and Open VSX (TMP-8141).
+6. Who are the required reviewers on the `release` environment that
+   **Promote to stable** runs in. The environment doesn't exist yet.
 
 ## Repo conventions
 
