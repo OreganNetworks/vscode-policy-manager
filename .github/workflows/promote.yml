@@ -11,6 +11,8 @@ on:
         required: true
 
 permissions:
+  # Reading the environment's protection rules, in the first step
+  actions: read
   contents: write
 
 jobs:
@@ -19,6 +21,19 @@ jobs:
     # Required reviewers, and deployments from main only - set up under Settings > Environments
     environment: release
     steps:
+      # GitHub creates an environment a job names the first time it runs, with no protection rules, so a run before
+      # release is set up would move stable with no reviewer.  This stops it.
+      - name: Check the release environment has required reviewers
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          reviewers=$(gh api "repos/$GH_REPO/environments/release" \
+            --jq '[.protection_rules[]? | select(.type == "required_reviewers") | .reviewers[]?] | length')
+          if [ "$reviewers" -lt 1 ]; then
+            echo "::error::The release environment has no required reviewers - set them under Settings > Environments"
+            exit 1
+          fi
       - name: Move stable
         # bash -eo pipefail: any gh call that fails stops the step before the tag moves
         shell: bash

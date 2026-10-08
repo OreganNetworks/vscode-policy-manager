@@ -174,7 +174,8 @@ state, and leaves your own editor alone.
 
 One-time set-up, in the repository settings under **Environments**: create a
 `release` environment with required reviewers, and limit its deployments to
-`main`. The **Promote to stable** workflow runs in it.
+`main`. The **Promote to stable** workflow runs in it, and stops until it has
+required reviewers.
 
 To release, bump `version` in `package.json` and merge that to `main`, then push
 a matching tag on the merged commit (`v0.1.1`). The `Release` workflow refuses a
