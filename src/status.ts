@@ -79,8 +79,9 @@ export function describeSetting(setting: ManagedSetting, inspection: SettingInsp
   const registered = isRegistered(inspection)
   const global = inspection?.globalValue
   const overriddenBy = findOverride(expected, inspection)
+  const inEffect = mergeOverDefault(expected, inspection?.defaultValue)
   return {
-    compliant: !registered || (isSettingEqual(inspection?.effectiveValue, expected) && !overriddenBy),
+    compliant: !registered || (isSettingEqual(inspection?.effectiveValue, inEffect) && !overriddenBy),
     expected,
     global,
     key,
@@ -153,6 +154,15 @@ export function formatStatusReport(snapshot: StatusSnapshot): string {
       `Note: ${host.name}'s own built-in AI is outside this extension's reach and isn't on the approved register`,
     )
   return lines.join('\n')
+}
+
+/** The value in effect for `value` at user level - the editor merges an object setting over its default */
+function mergeOverDefault(value: SettingValue, defaultValue: unknown): unknown {
+  return isRecord(value) && isRecord(defaultValue) ? { ...defaultValue, ...value } : value
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function findOverride(expected: SettingValue, inspection: SettingInspection | undefined): SettingOverride | undefined {

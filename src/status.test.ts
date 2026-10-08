@@ -226,6 +226,20 @@ describe('formatStatusReport', () => {
     assert.match(report, /^ {2}\[FAIL\] telemetry\.telemetryLevel = "off", overridden by device policy$/m)
   })
 
+  it('does not blame device policy for an object setting the editor merges over its default', () => {
+    // The default from GitHub Copilot.  The editor merges the user value { "*": false } over it, so get() has every key
+    const defaultValue = { '*': true, markdown: false, plaintext: false, scminput: false }
+    const copilot = MANAGED_SETTINGS.find(setting => setting.key === 'github.copilot.enable')!
+    const status = describeSetting(copilot, {
+      defaultValue,
+      effectiveValue: { ...defaultValue, '*': false },
+      globalValue: { '*': false },
+    })
+    const report = formatStatusReport(snapshot({ settings: [status] }))
+    assert.match(report, /^ {2}\[ok\] {3}github\.copilot\.enable = \{"\*":false\}$/m)
+    assert.match(report, /^Overall: compliant$/m)
+  })
+
   it('explains a built-in Copilot Chat', () => {
     const report = formatStatusReport(
       snapshot({ extensions: [{ builtIn: true, id: 'github.copilot-chat', installed: true, pendingReload: false }] }),
