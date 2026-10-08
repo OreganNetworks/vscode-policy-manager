@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, rmSync } from 'node:fs'
+import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { downloadAndUnzipVSCode, resolveCliArgsFromVSCodeExecutablePath, runTests } from '@vscode/test-electron'
 import { PROFILE, readDefaultEntry } from './profiles/manifest'
@@ -65,7 +65,8 @@ async function main(): Promise<void> {
 /**
  * The release install, which the suite above can't cover: it runs the source in development mode, where the extension
  * never applies itself to all profiles.  Installs the packaged VSIX into a named profile only, then checks that it
- * applies itself to all profiles there, and so runs in a window with the Default profile too.
+ * applies itself to all profiles there, and so runs in a window with the Default profile too.  Then installs the next
+ * version from a window with the named profile, the way the self-update does, and checks both windows run it.
  */
 async function runProfilesSuite({ baseArgs, cli, vscodeExecutablePath }: EditorOptions): Promise<void> {
   const extensionsDir = join(CACHE, 'profiles-extensions')
@@ -74,12 +75,19 @@ async function runProfilesSuite({ baseArgs, cli, vscodeExecutablePath }: EditorO
   rmSync(userDataDir, { force: true, recursive: true })
   const vsix = join(CACHE, 'oregan-policy-manager.vsix')
   run(VSCE, ['package', '--no-dependencies', '--out', vsix])
+  const { nextVersion, nextVsix } = packageNextVersion()
 
   const profileArgs = [`--extensions-dir=${extensionsDir}`, `--user-data-dir=${userDataDir}`]
   const step = (name: string, extraArgs: string[] = []) =>
     runTests({
       extensionDevelopmentPath: join(ROOT, 'test/fixtures/profiles-host'),
-      extensionTestsEnv: { OPM_TEST_EXTENSIONS_DIR: extensionsDir },
+      extensionTestsEnv: {
+        OPM_TEST_EXTENSIONS_DIR: extensionsDir,
+        OPM_TEST_NEXT_VERSION: nextVersion,
+        OPM_TEST_NEXT_VSIX: nextVsix,
+        OPM_TEST_REPO: ROOT,
+        OPM_TEST_USER_DATA_DIR: userDataDir,
+      },
       extensionTestsPath: join(__dirname, 'profiles', `${name}.js`),
       launchArgs: [...profileArgs, '--disable-workspace-trust', ...extraArgs],
       vscodeExecutablePath,
@@ -90,6 +98,24 @@ async function runProfilesSuite({ baseArgs, cli, vscodeExecutablePath }: EditorO
   if (readDefaultEntry(extensionsDir)) throw new Error('the install into a named profile also went into Default')
   await step('appliesItself', ['--profile', PROFILE])
   await step('runsInDefault')
+  await step('updatesFromProfile', ['--profile', PROFILE])
+  await step('runsNextVersion')
+  await step('runsNextVersion', ['--profile', PROFILE])
+}
+
+/** A VSIX one patch version on from `package.json`, built from a copy, for the update steps of the profiles suite */
+function packageNextVersion(): { nextVersion: string; nextVsix: string } {
+  const copy = join(CACHE, 'profiles-next')
+  rmSync(copy, { force: true, recursive: true })
+  for (const file of ['.vscodeignore', 'LICENSE', 'README.md', 'out'])
+    cpSync(join(ROOT, file), join(copy, file), { recursive: true })
+  const manifest = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')) as { version: string }
+  const [major, minor, patch] = manifest.version.split('.').map(Number)
+  const nextVersion = `${major}.${minor}.${patch + 1}`
+  writeFileSync(join(copy, 'package.json'), JSON.stringify({ ...manifest, version: nextVersion }, null, 2))
+  const nextVsix = join(CACHE, `oregan-policy-manager-${nextVersion}.vsix`)
+  run(VSCE, ['package', '--no-dependencies', '--out', nextVsix], copy)
+  return { nextVersion, nextVsix }
 }
 
 main().catch((error: unknown) => {

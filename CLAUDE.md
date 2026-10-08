@@ -77,6 +77,7 @@ src/
   status.ts       # policy status report
   updater/        # the self-update, and everything only it uses
     selfUpdate.ts         # update check and timer
+    cliInstall.ts         # installing an update with the editor CLI, into the Default profile
     manifest.ts           # release manifest parsing, version comparison
     download.ts           # bounded HTTPS GET, verified download
     lock.ts               # single-window cycle lock
@@ -121,7 +122,8 @@ These are the ones that are easy to get wrong:
 7. **`extensionKind: ["ui"]`** keeps the extension local in Remote-SSH, WSL and
    Dev Container sessions.
 8. **No runtime dependencies** beyond the VS Code API and Node built-ins
-   (`https`, `crypto`, `fs`). Dev dependencies are fine.
+   (`https`, `crypto`, `fs`, and `child_process` for the editor CLI that
+   installs updates). Dev dependencies are fine.
 9. **No data collection.** The only outbound requests are GETs for
    `manifest.json` and the VSIX.
 10. **Updater behaviour:**
@@ -132,7 +134,10 @@ These are the ones that are easy to get wrong:
       it whenever its version differs from the running one, older included, so
       rolling stable back reaches every copy. Checks are off outside
       `ExtensionMode.Production` (F5, the integration suite)
-    - verify the SHA-256 before `workbench.extensions.installExtension`
+    - verify the SHA-256, then install with the editor CLI into the Default
+      profile (`updater/cliInstall.ts`), not `workbench.extensions.installExtension`:
+      from a window with a named profile that writes only that profile's list,
+      and every window keeps running the old version
     - one window per cycle, via a short-lived lock file in `globalStorageUri`
     - every 60 minutes plus up to 5 minutes of jitter, cleared in `deactivate()`
     - on any failure, log and wait for the next cycle - the running version is

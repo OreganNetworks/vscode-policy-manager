@@ -108,6 +108,11 @@ hour, and offers a window reload like any other update. A copy installed by
 hand that isn't the stable release, such as a local build, keeps running until
 the next reload after that check.
 
+The update is installed with the editor's own CLI (`code --install-extension`),
+into the Default profile. The extension runs in every profile from there, so the
+update reaches all of them whichever window does the check. Installed from a
+window with another profile in any other way, it would reach that profile only.
+
 Update checks are off in the Extension Development Host (F5) and the
 integration suite, where the running code isn't a release.
 `Oregan: Check for Updates` still runs one there.

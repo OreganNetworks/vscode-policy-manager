@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import { dirname, isAbsolute, join, relative } from 'node:path'
 import * as vscode from 'vscode'
 import {
@@ -7,7 +8,7 @@ import {
 } from './policy/applyToAllProfiles'
 import { createCopilotRemover, type ExtensionRegistry, type InstalledExtension } from './policy/removeCopilotExtensions'
 import { createDriftHandler } from './policy/keepSettings'
-import { aiFirstHostMessage, detectHost } from './host'
+import { aiFirstHostMessage, detectHost, type HostInfo } from './host'
 import { IDE_CONFIGURATION_URL, POLICY_URL } from './links'
 import { describeError } from './logger'
 import {
@@ -18,6 +19,7 @@ import {
   type NoticeStore,
   type SavedNotice,
 } from './notices'
+import { cliInstallCommand, runCliInstall } from './updater/cliInstall'
 import { compareVersions } from './updater/manifest'
 import { applyPolicy, findAiSettingsOutOfLine, findSwitchedOffAiSettings, type SettingsStore } from './policy/settings'
 import { CLAUDE_CODE_ID, claudeCodeMessage } from './policy/recommendClaudeCode'
@@ -71,7 +73,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const updater = createUpdater({
     cache: updaterCache,
     currentVersion: version,
-    install: installVsix,
+    install: vsixPath => installVsix({ context, host, log, vsixPath }),
     logger: log,
     onInstalled: installed => detach(log, 'Reload prompt', showReloadPrompt(installed)),
     storageDir: context.globalStorageUri.fsPath,
@@ -249,7 +251,36 @@ function createUpdaterCache(context: vscode.ExtensionContext): UpdaterCacheStore
   }
 }
 
-async function installVsix(vsixPath: string): Promise<void> {
+/** Arguments to {@link installVsix} */
+type InstallVsixOptions = {
+  context: vscode.ExtensionContext
+  host: HostInfo
+  log: vscode.LogOutputChannel
+  vsixPath: string
+}
+
+/**
+ * Installs an update with the editor CLI, into the default profile, so it reaches every profile whichever window has
+ * the cycle (see `updater/cliInstall.ts`).  An editor whose CLI isn't where VS Code keeps it gets the install command
+ * instead, which only updates the profile of this window when that is a named one.
+ */
+async function installVsix({ context, host, log, vsixPath }: InstallVsixOptions): Promise<void> {
+  const command = cliInstallCommand({
+    appRoot: vscode.env.appRoot,
+    cli: host.cli,
+    extensionPath: context.extensionPath,
+    globalStoragePath: context.globalStorageUri.fsPath,
+    platform: process.platform,
+    vsixPath,
+  })
+  if (command && existsSync(command.command)) {
+    log.debug(`Update: ${await runCliInstall(command)}`)
+    return
+  }
+  log.warn(
+    `Update: no ${host.cli} CLI beside the editor, so it installs through the editor - from a window with a named ` +
+      'profile, only that profile gets the update',
+  )
   await vscode.commands.executeCommand('workbench.extensions.installExtension', vscode.Uri.file(vsixPath))
 }
 
