@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process'
 import { mkdirSync, rmSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { downloadAndUnzipVSCode, resolveCliArgsFromVSCodeExecutablePath, runTests } from '@vscode/test-electron'
+import { PROFILE, readDefaultEntry } from './profiles/manifest'
 
 const ROOT = resolve(__dirname, '../../..') // out/test/integration -> repository root
 const CACHE = join(ROOT, '.vscode-test')
@@ -13,9 +14,18 @@ function run(command: string, args: string[], cwd = ROOT): void {
   if (result.status !== 0) throw new Error(`${command} ${args.join(' ')} exited with ${result.status}`)
 }
 
+/** Arguments to {@link runProfilesSuite} */
+type EditorOptions = {
+  /** The CLI arguments from `resolveCliArgsFromVSCodeExecutablePath`, less the profile ones */
+  baseArgs: string[]
+  cli: string
+  vscodeExecutablePath: string
+}
+
 /**
  * Downloads the editor (the `engines.vscode` floor by default; set `VSCODE_TEST_VERSION=stable` for the latest),
- * installs the fake Copilot fixtures into a fresh profile, then runs the suite in the extension host.
+ * installs the fake Copilot fixtures into a fresh profile, then runs the suite in the extension host.  The profiles
+ * suite follows.
  */
 async function main(): Promise<void> {
   // A shell started by an extension (a Claude Code session) inherits it, and the editor then starts as plain Node
@@ -49,6 +59,37 @@ async function main(): Promise<void> {
     launchArgs: [...profileArgs, '--disable-workspace-trust'],
     vscodeExecutablePath,
   })
+  await runProfilesSuite({ baseArgs, cli, vscodeExecutablePath })
+}
+
+/**
+ * The release install, which the suite above can't cover: it runs the source in development mode, where the extension
+ * never applies itself to all profiles.  Installs the packaged VSIX into a named profile only, then checks that it
+ * applies itself to all profiles there, and so runs in a window with the Default profile too.
+ */
+async function runProfilesSuite({ baseArgs, cli, vscodeExecutablePath }: EditorOptions): Promise<void> {
+  const extensionsDir = join(CACHE, 'profiles-extensions')
+  const userDataDir = join(CACHE, 'profiles-user-data')
+  rmSync(extensionsDir, { force: true, recursive: true })
+  rmSync(userDataDir, { force: true, recursive: true })
+  const vsix = join(CACHE, 'oregan-policy-manager.vsix')
+  run(VSCE, ['package', '--no-dependencies', '--out', vsix])
+
+  const profileArgs = [`--extensions-dir=${extensionsDir}`, `--user-data-dir=${userDataDir}`]
+  const step = (name: string, extraArgs: string[] = []) =>
+    runTests({
+      extensionDevelopmentPath: join(ROOT, 'test/fixtures/profiles-host'),
+      extensionTestsEnv: { OPM_TEST_EXTENSIONS_DIR: extensionsDir },
+      extensionTestsPath: join(__dirname, 'profiles', `${name}.js`),
+      launchArgs: [...profileArgs, '--disable-workspace-trust', ...extraArgs],
+      vscodeExecutablePath,
+    })
+
+  await step('createProfile', ['--profile', PROFILE])
+  run(cli, [...baseArgs, ...profileArgs, '--profile', PROFILE, '--install-extension', vsix])
+  if (readDefaultEntry(extensionsDir)) throw new Error('the install into a named profile also went into Default')
+  await step('appliesItself', ['--profile', PROFILE])
+  await step('runsInDefault')
 }
 
 main().catch((error: unknown) => {

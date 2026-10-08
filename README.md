@@ -40,11 +40,11 @@ Manager** channel in the Output panel. If the window was already open, run
 **Developer: Reload Window**.
 
 The CLI installs into the Default profile. If you use
-[profiles](https://code.visualstudio.com/docs/configure/profiles), a window with
-another profile doesn't run the extension until it is installed there too:
-either add `--profile "<name>"` to the command, or open the Extensions view in
-the Default profile and choose **Apply Extension to all Profiles** from the gear
-menu of the extension.
+[profiles](https://code.visualstudio.com/docs/configure/profiles), install it
+into one you use with `--profile "<name>"`, or open a window with the Default
+profile once. The first time the extension runs, it applies itself to all
+profiles (**Apply Extension to all Profiles**), so from then on every window
+runs it, whatever its profile.
 
 The extension then keeps itself on the stable release (see
 [Versions and updates](#versions-and-updates)). The release repository has to
@@ -54,6 +54,7 @@ be public for that check to work.
 
 | Area | Behaviour |
 |---|---|
+| Profiles | Applies itself to all profiles the first time it runs, and again if that is turned off, so every window runs the policy whatever its profile |
 | Telemetry | Sets `telemetry.telemetryLevel` to `"off"`, plus third-party flags such as `redhat.telemetry.enabled` where registered |
 | Built-in AI | Sets `chat.disableAIFeatures: true` and `github.copilot.enable: { "*": false }`, skipping any key the host editor has not registered, and says so in a notification when it switches them off |
 | Copilot extensions | Uninstalls the Copilot family and the extensions that depend on it (below), and does the same again on a later reinstall |
@@ -148,8 +149,9 @@ Each of these is also a VS Code task (**Tasks: Run Task**), with status-bar
 buttons when the recommended `actboy168.tasks` extension is installed.
 
 Every pull request runs the `CI` workflow: lint, format, type-check, build,
-unit tests, the integration suite on VS Code 1.90.0 and stable, and a package
-check that the VSIX holds only the extension. The VSIX is attached to the run
+unit tests, the integration suite on VS Code 1.90.0 and stable (including the
+packaged VSIX installed into a named profile), and a package check that the
+VSIX holds only the extension. The VSIX is attached to the run
 as the `vsix` artifact.
 
 ### Running it

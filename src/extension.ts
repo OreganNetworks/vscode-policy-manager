@@ -1,5 +1,10 @@
-import { isAbsolute, join, relative } from 'node:path'
+import { dirname, isAbsolute, join, relative } from 'node:path'
 import * as vscode from 'vscode'
+import {
+  applyToAllProfiles,
+  type ApplyToAllProfilesOptions,
+  readAppliedToAllProfiles,
+} from './policy/applyToAllProfiles'
 import { createCopilotRemover, type ExtensionRegistry, type InstalledExtension } from './policy/removeCopilotExtensions'
 import { createDriftHandler } from './policy/keepSettings'
 import { aiFirstHostMessage, detectHost } from './host'
@@ -88,8 +93,12 @@ export function activate(context: vscode.ExtensionContext): void {
   let schedule: { dispose(): void } | undefined
   const deferred = setImmediate(function startAfterActivation() {
     detach(log, 'Start-up', startUp())
-    // The Extension Development Host and the integration suite run code that isn't a release
+    /*
+     * The Extension Development Host and the integration suite run code that isn't a release, and isn't installed:
+     * there is no release to follow and no install to apply to every profile.
+     */
     if (context.extensionMode === vscode.ExtensionMode.Production) {
+      detach(log, 'All profiles', applyToAllProfiles(createProfileScope(context, log)))
       schedule = scheduleChecks({ check: () => updater.check(), logger: log })
     } else {
       log.info('Update checks are off outside a release install - Oregan: Check for Updates still runs one')
@@ -178,6 +187,24 @@ function toInstalledExtension(extension: vscode.Extension<unknown>, builtInRoot:
 function isInside(child: string, parent: string): boolean {
   const path = relative(parent, child)
   return path !== '' && !path.startsWith('..') && !isAbsolute(path)
+}
+
+/** The ports for {@link applyToAllProfiles}, over the extensions folder this install sits in */
+function createProfileScope(context: vscode.ExtensionContext, log: vscode.LogOutputChannel): ApplyToAllProfilesOptions {
+  const { extensionPath, extensionUri } = context
+  const { id } = context.extension
+  // The default profile lists its extensions in the extensions folder; a named profile keeps its list elsewhere
+  const manifestPath = join(dirname(extensionPath), 'extensions.json')
+  return {
+    isApplied: () => readAppliedToAllProfiles(manifestPath, id),
+    logger: log,
+    async toggle() {
+      // The command on the gear menu, which finds the extension by the location it passes as context
+      await vscode.commands.executeCommand('workbench.extensions.action.toggleApplyToAllProfiles', id, {
+        location: extensionUri,
+      })
+    },
+  }
 }
 
 function createUpdaterCache(context: vscode.ExtensionContext): UpdaterCacheStore {

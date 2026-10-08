@@ -68,6 +68,7 @@ a profile of your own editor.
 src/
   extension.ts    # the only module that imports vscode: ports, commands, notifications
   policy/         # what the policy enforces, one requirement per file
+    applyToAllProfiles.ts       # every profile
     settings.ts                 # telemetry off; built-in AI and Copilot settings off
     keepSettings.ts             # keeping settings in place
     removeCopilotExtensions.ts  # Copilot extension removal
@@ -83,8 +84,8 @@ src/
   logger.ts       # Logger port, describeError
   links.ts        # policy and IDE Configuration URLs
   testing/        # spec helpers, excluded from the build
-test/integration/ # @vscode/test-electron suite
-test/fixtures/    # fake managed extensions the suite installs
+test/integration/ # @vscode/test-electron suite; profiles/ runs the packaged VSIX in a named profile
+test/fixtures/    # fake managed extensions the suite installs, and the host for the profiles suite
 scripts/write-manifest.mjs
 scripts/add-extension.mjs      # the Add extension and Try extension tasks
 .github/workflows/ci.yml       # every PR: lint, format, typecheck, build, test, package, integration
@@ -143,6 +144,13 @@ These are the ones that are easy to get wrong:
     in, and the uninstall command refuses built-ins. The remover skips it and
     `chat.disableAIFeatures` is what switches it off - keep that setting in the
     table.
+14. **Every profile.** VS Code can't apply an extension to all profiles from
+    the manifest or the CLI, so a release install runs
+    `workbench.extensions.action.toggleApplyToAllProfiles` on itself. It is an
+    internal command and a toggle: read `isApplicationScoped` from the
+    `extensions.json` in the extensions folder first, and never run it when that
+    already reads as applied. VS Code 1.90 ignores it until its extension list
+    is loaded, hence the retries.
 
 ## Open questions
 
