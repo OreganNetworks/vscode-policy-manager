@@ -1,9 +1,20 @@
 /*
  * REQUIREMENT: Out of Settings Sync
  *
- * Keeps the managed settings and extensions out of Settings Sync.  Without it, the policy values and the Copilot
- * uninstalls go to every machine on the sync account of the developer, and a change made on another machine comes
- * back here, where the drift handler fights it - and switching the AI back off restarts the extension host.
+ * Keeps the managed settings and extensions out of Settings Sync.  Settings Sync copies the user settings and the
+ * installed extensions between every machine on the developer's sync account, in both directions.  Without this, the
+ * policy values and the Copilot uninstalls would reach a personal machine on the same account, and a change made there
+ * would come back here as drift, where restoring an AI setting can restart the extension host.
+ *
+ * Two user settings list what Settings Sync leaves out:
+ * - `settingsSync.ignoredSettings`: a key on it is neither uploaded from this machine nor overwritten from another one,
+ *   so each machine keeps its own value
+ * - `settingsSync.ignoredExtensions`: an extension on it is not installed, uninstalled, enabled or disabled on the
+ *   other machines
+ *
+ * The two lists themselves always sync (VS Code registers both with `disallowSyncIgnore`), so they reach the other
+ * machines as well, and from then on no machine on the account syncs these entries: this one keeps the policy, and the
+ * others keep whatever the developer set there.
  */
 import { describeError, type Logger } from '../logger'
 import { isRegistered, type SettingsStore } from './settings'
@@ -59,7 +70,10 @@ export function addMissingEntries(
 
 /**
  * Adds the managed setting keys and extension IDs to the two Settings Sync lists, at user level, where they are
- * missing.  An editor without Settings Sync has neither key registered, and is skipped.  Never throws.
+ * missing.  Call it before the policy settings are written, so that Settings Sync never uploads them.  An editor
+ * without Settings Sync has neither key registered, and is skipped.  Never throws.
+ *
+ * @param options  The managed keys and extension IDs, and the store and logger to use.
  */
 export async function keepOutOfSync({ extensionIds, logger, settingKeys, store }: KeepOutOfSyncOptions): Promise<void> {
   await addEntries({ key: IGNORED_SETTINGS_KEY, logger, required: settingKeys, store })
