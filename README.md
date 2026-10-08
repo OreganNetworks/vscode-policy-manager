@@ -1,8 +1,7 @@
 # Oregan Policy Manager
 
-An internally distributed editor extension (`oregan.oregan-policy-manager`)
-that keeps every Oregan developer's editor aligned with our NDA commitments and
-the
+A VS Code extension that keeps every Oregan developer's editor aligned with our
+NDA commitments and the
 [Agentic AI Development Policy](https://oregannetworks.atlassian.net/wiki/spaces/AI/pages/3808264194/Agentic+AI+Development+Policy)
 (POL-SEC-AI-002):
 
@@ -10,12 +9,45 @@ the
 - **GitHub Copilot off** - Copilot is not on the Section 5 approved register.
 - **Claude Code recommended** as the approved assistant (Claude for Teams).
 
-It replaces the per-repository `.vscode` rollout started on the
-[IDE Configuration](https://oregannetworks.atlassian.net/wiki/spaces/AI/pages/4050452495/IDE+Configuration)
-page, which was paused before any repository took it. One install per machine
-applies the same settings at user level, across every workspace and every
-repository host (GitHub, Bitbucket and Zenterio alike), and keeps them in
-place.
+## Contents
+
+- [Install](#install)
+- [What it does](#what-it-does)
+  - [Commands](#commands)
+- [Supported editors](#supported-editors)
+- [Development](#development)
+  - [Running it](#running-it)
+  - [Releasing](#releasing)
+- [What it is not](#what-it-is-not)
+- [References](#references)
+
+## Install
+
+Download `oregan-policy-manager-<version>.vsix` from the
+[latest release](https://github.com/OreganNetworks/vscode-policy-manager/releases/latest)
+and install it with the host editor's CLI:
+
+```sh
+code --install-extension oregan-policy-manager-<version>.vsix
+```
+
+Swap `code` for `codium`, `cursor` or `windsurf` as appropriate. It is not on
+the Marketplace or Open VSX, so searching there won't find it. Once installed,
+it is listed under **Installed** in the Extensions view as **Oregan Policy
+Manager** (`oregan.oregan-policy-manager`), and it logs to the **Oregan Policy
+Manager** channel in the Output panel. If the window was already open, run
+**Developer: Reload Window**.
+
+The CLI installs into the Default profile. If you use
+[profiles](https://code.visualstudio.com/docs/configure/profiles), a window with
+another profile doesn't run the extension until it is installed there too:
+either add `--profile "<name>"` to the command, or open the Extensions view in
+the Default profile and choose **Apply Extension to all Profiles** from the gear
+menu of the extension.
+
+The extension then checks for a new release on start-up and every hour, and
+offers a window reload once one is installed. The release repository has to be
+public for that check to work.
 
 ## What it does
 
@@ -81,21 +113,6 @@ settings stay put in Remote-SSH, WSL and Dev Container sessions. It also runs
 in Restricted Mode (untrusted workspace) windows, because it never reads or
 runs workspace content.
 
-## Install
-
-Download `oregan-policy-manager-<version>.vsix` from
-<https://github.com/OreganNetworks/vscode-policy-manager/releases> and install
-it with the host editor's CLI:
-
-```sh
-code --install-extension oregan-policy-manager-<version>.vsix
-```
-
-Swap `code` for `codium`, `cursor` or `windsurf` as appropriate. The extension
-then checks for a new release on start-up and every hour, and offers a window
-reload once one is installed. The release repository has to be public for that
-check to work.
-
 ## Development
 
 ```sh
@@ -107,13 +124,31 @@ VSCODE_TEST_VERSION=stable xvfb-run -a pnpm test:integration
 pnpm package                       # oregan-policy-manager-<version>.vsix
 ```
 
-F5 runs the extension in an isolated profile under `.vscode-test/`, so it never
-touches your own settings or extensions.
+Each of these is also a VS Code task (**Tasks: Run Task**), with status-bar
+buttons when the recommended `actboy168.tasks` extension is installed.
 
 Every pull request runs the `CI` workflow: lint, format, type-check, build,
 unit tests, the integration suite on VS Code 1.90.0 and stable, and a package
 check that the VSIX holds only the extension. The VSIX is attached to the run
 as the `vsix` artifact.
+
+### Running it
+
+Installed in your own editor, the extension applies the policy to your own
+settings and extensions. Three ways to run it, from the most isolated:
+
+| How | What runs | Where |
+|---|---|---|
+| F5 (**Run Extension (isolated profile)**) | The source, in an Extension Development Host | `.vscode-test/dev-user-data` and `.vscode-test/dev-extensions` |
+| **Try extension (clean editor)** task | The packaged VSIX, in a separate editor that it opens | `.vscode-test/try/` - delete it to start afresh |
+| **Add extension** task | The packaged VSIX, in your own editor | The profile you name when it asks (`Default` unless you use profiles) |
+
+The two tasks package the VSIX first, then run `scripts/add-extension.mjs`.
+Any separate editor works the same way: `code --user-data-dir <dir>
+--extensions-dir <dir>` starts one with its own settings, extensions and
+state, and leaves your own editor alone.
+
+### Releasing
 
 To release, bump `version` in `package.json`, commit, then push a matching tag
 (`v0.1.1`). The `Release` workflow tests, packages and publishes the VSIX with

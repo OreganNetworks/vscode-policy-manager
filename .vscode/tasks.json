@@ -172,6 +172,38 @@
           "label": "$(archive) Package"
         }
       }
+    },
+    {
+      "label": "Add extension",
+      "type": "shell",
+      "command": "node scripts/add-extension.mjs \"${input:profile}\"",
+      "dependsOn": "package",
+      "group": "none",
+      "problemMatcher": [],
+      "detail": "Package, then install the VSIX into a profile of your own editor with code --install-extension --profile. The policy applies there for real",
+      "presentation": { "focus": true, "reveal": "always", "clear": true },
+      "options": {
+        "statusbar": {
+          "color": "#cf6eff",
+          "label": "$(extensions) Add"
+        }
+      }
+    },
+    {
+      "label": "Try extension (clean editor)",
+      "type": "shell",
+      "command": "node scripts/add-extension.mjs --clean",
+      "dependsOn": "package",
+      "group": "none",
+      "problemMatcher": [],
+      "detail": "Package, install the VSIX into a throwaway editor under .vscode-test/try/ and open it - your own settings and extensions are untouched. Delete the folder to start afresh",
+      "presentation": { "focus": true, "reveal": "always", "clear": true },
+      "options": {
+        "statusbar": {
+          "color": "#cf6eff",
+          "label": "$(vm-active) Try"
+        }
+      }
     }
   ],
   "inputs": [
@@ -181,6 +213,12 @@
       "description": "VS Code build to run the integration suite against",
       "options": ["1.90.0", "stable"],
       "default": "1.90.0"
+    },
+    {
+      "id": "profile",
+      "type": "promptString",
+      "description": "Profile to install into: Default, or the name the Manage (gear) menu shows for this window",
+      "default": "Default"
     }
   ]
 }

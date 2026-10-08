@@ -57,7 +57,10 @@ Each of these is also a VS Code task (`.vscode/tasks.json`), with status-bar
 buttons when the recommended `actboy168.tasks` extension is installed.
 
 F5 in VS Code runs the extension in an isolated profile under `.vscode-test/` -
-never point it at your own profile, it will apply the policy there.
+never point it at your own profile, it will apply the policy there. The **Try
+extension (clean editor)** task does the same for the packaged VSIX, in a
+throwaway editor under `.vscode-test/try/`; **Add extension** installs it into
+a profile of your own editor.
 
 ## Layout
 
@@ -83,6 +86,7 @@ src/
 test/integration/ # @vscode/test-electron suite
 test/fixtures/    # fake managed extensions the suite installs
 scripts/write-manifest.mjs
+scripts/add-extension.mjs      # the Add extension and Try extension tasks
 .github/workflows/ci.yml       # every PR: lint, format, typecheck, build, test, package, integration
 .github/workflows/release.yml  # v* tags: test, package, publish the VSIX and manifest.json
 ```
