@@ -166,8 +166,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function findOverride(expected: SettingValue, inspection: SettingInspection | undefined): SettingOverride | undefined {
-  const { workspaceFolderValue, workspaceValue } = inspection ?? {}
-  if (workspaceFolderValue !== undefined && !isSettingEqual(workspaceFolderValue, expected)) return 'workspace folder'
+  const { workspaceFolderValues = [], workspaceValue } = inspection ?? {}
+  if (workspaceFolderValues.some(value => !isSettingEqual(value, expected))) return 'workspace folder'
   if (workspaceValue !== undefined && !isSettingEqual(workspaceValue, expected)) return 'workspace'
   return undefined
 }

@@ -119,13 +119,22 @@ function createSettingsStore(): SettingsStore {
     inspect(key) {
       const configuration = vscode.workspace.getConfiguration()
       const inspection = configuration.inspect(key)
+      if (!inspection) return undefined
       // inspect() has no field for device policy, but get() applies it
-      return inspection && { ...inspection, effectiveValue: configuration.get(key) }
+      return { ...inspection, effectiveValue: configuration.get(key), workspaceFolderValues: inspectFolders(key) }
     },
     async updateGlobal(key, value) {
       await vscode.workspace.getConfiguration().update(key, value, vscode.ConfigurationTarget.Global)
     },
   }
+}
+
+/** Without a resource, inspect() leaves folder values out, so each folder of a multi-root workspace is asked in turn */
+function inspectFolders(key: string): unknown[] {
+  return (vscode.workspace.workspaceFolders ?? []).flatMap(folder => {
+    const value = vscode.workspace.getConfiguration(undefined, folder.uri).inspect(key)?.workspaceFolderValue
+    return value === undefined ? [] : [value]
+  })
 }
 
 function createExtensionRegistry(): ExtensionRegistry {

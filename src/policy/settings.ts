@@ -45,7 +45,11 @@ export type SettingInspection = {
   effectiveValue?: unknown
   /** The user (global) value - the only one the policy writes */
   globalValue?: unknown
-  workspaceFolderValue?: unknown
+  /**
+   * `workspaceFolderValue` from each folder of a multi-root workspace that sets one.  The editor only reports a folder
+   * value it applies, so a window- or application-scoped key never has one.
+   */
+  workspaceFolderValues?: readonly unknown[]
   workspaceValue?: unknown
 }
 

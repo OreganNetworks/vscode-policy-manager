@@ -54,8 +54,9 @@ describe('describeSetting', () => {
       defaultValue: false,
       effectiveValue: true,
       globalValue: true,
-      workspaceFolderValue: false,
+      workspaceFolderValues: [true, false],
     })
+    assert.equal(folder.compliant, false)
     assert.equal(folder.overriddenBy, 'workspace folder')
   })
 
