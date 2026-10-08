@@ -20,12 +20,12 @@ description.
 ## Source of truth
 
 The design is not in this repo. It lives in two attachments on TMP-7075. A
-re-upload carries a date prefix (`2026-10-08_...`), so read the newest of each:
+re-upload carries a date prefix (`2026-10-08b_...`), so read the newest of each:
 
-- `oregan-vscode-extension-spec.md` - Draft v0.7: the functional requirements,
+- `oregan-vscode-extension-spec.md` - Draft v0.8: the functional requirements,
   manifest essentials and code layout; section 9 lists the changes since v0.6
 - `oregan-vscode-extension-implementation-plan.md` - the task-by-task
-  implementation plan, with the work since the first review as Tasks 12 to 19
+  implementation plan, with the work since the first review as Tasks 12 to 21
 
 Read both before implementing anything. Fetch them through the Atlassian MCP:
 `getJiraIssue` with `fields: ["attachment"]` for the attachment ids, then
@@ -188,7 +188,10 @@ been answered before building on an assumption:
 5. Who owns the accounts that register the `oregannetworks` publisher on the
    VS Code Marketplace and Open VSX (TMP-8141).
 6. Who are the required reviewers on the `release` environment that
-   **Promote to stable** runs in. The environment doesn't exist yet.
+   **Promote to stable** runs in. The environment doesn't exist yet, and the
+   workflow refuses to run until it has them.
+7. Rollout: each developer installs the extension by hand and can uninstall
+   it. Will IT push the install, for example with an MDM script?
 
 ## Repo conventions
 
