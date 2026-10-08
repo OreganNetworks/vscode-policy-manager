@@ -94,6 +94,7 @@ scripts/add-extension.mjs      # the Add extension and Try extension tasks
 .github/workflows/ci.yml       # every PR: lint, format, typecheck, build, test, package, integration
 .github/workflows/release.yml  # v* tags: test, package, publish the VSIX and manifest.json as Latest (stable)
 .github/workflows/promote.yml  # Promote to stable: mark an earlier (or later) release Latest, behind reviewers
+.github/CODEOWNERS             # ONYX and the admins outside it own every file; every PR needs one's approval
 ```
 
 ## Design constraints
@@ -188,8 +189,10 @@ been answered before building on an assumption:
 5. Who owns the accounts that register the `oregannetworks` publisher on the
    VS Code Marketplace and Open VSX (TMP-8141).
 6. Who are the required reviewers on the `release` environment that
-   **Promote to stable** runs in. The environment doesn't exist yet, and the
-   workflow refuses to run until it has them.
+   **Promote to stable** runs in. The ONYX team, as far as we know. The
+   environment exists, limited to `main`, but on the GitHub Team plan required
+   reviewers wait for the repository to be public, and the workflow refuses to
+   run until it has them. README **Going public** has the steps.
 7. Rollout: each developer installs the extension by hand and can uninstall
    it. Will IT push the install, for example with an MDM script?
 

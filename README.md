@@ -19,6 +19,7 @@ NDA commitments and the
 - [Development](#development)
   - [Running it](#running-it)
   - [Releasing](#releasing)
+  - [Going public](#going-public)
 - [What it is not](#what-it-is-not)
 - [References](#references)
 
@@ -164,6 +165,11 @@ packaged VSIX installed into a named profile), and a package check that the
 VSIX holds only the extension. The VSIX is attached to the run
 as the `vsix` artifact.
 
+Nobody pushes to `main` directly. A pull request merges once those jobs pass
+and a code owner approves its latest push: a member of the ONYX team, or one of
+the repository admins outside it (`.github/CODEOWNERS`). Only ONYX and the
+repository admins can merge it.
+
 ### Running it
 
 Installed in your own editor, the extension applies the policy to your own
@@ -182,16 +188,11 @@ state, and leaves your own editor alone.
 
 ### Releasing
 
-One-time set-up, in the repository settings under **Environments**: create a
-`release` environment with required reviewers, and limit its deployments to
-`main`. The **Promote to stable** workflow runs in it, and stops until it has
-required reviewers.
-
 To release, bump `version` in `package.json` and merge that to `main`, then push
-a matching tag on the merged commit (`v0.1.1`). The `Release` workflow refuses a
-tag on a commit that isn't on `main`. It tests, packages and publishes the VSIX
-with its `manifest.json`, and marks the release Latest, so it is stable straight
-away.
+a matching tag on the merged commit (`v0.1.1`). Only the repository admins can
+push, move or delete a `v*` tag, and the `Release` workflow refuses a tag on a
+commit that isn't on `main`. It tests, packages and publishes the VSIX with its
+`manifest.json`, and marks the release Latest, so it is stable straight away.
 
 To roll stable back, or forward again, run **Promote to stable** with the
 version stable should be:
@@ -204,6 +205,53 @@ After a reviewer approves, it checks that `v0.1.0` is published with its VSIX
 and `manifest.json`, marks it Latest, and writes the version stable moved from
 to the run summary, so the same command with that version undoes it. The next
 tag makes its own release stable again.
+
+The workflow runs in the `release` environment, which takes deployments from
+`main` only. It stops at its first step until that environment has required
+reviewers, which it gets when the repository goes public.
+
+### Going public
+
+The repository is private until the CSO signs off making it public. Until then
+every update check gets HTTP 404, and the `release` environment can't have
+required reviewers: on the GitHub Team plan they are for public repositories
+only. Once it is signed off:
+
+1. Make the repository public:
+
+   ```sh
+   gh repo edit OreganNetworks/vscode-policy-manager --visibility public --accept-visibility-change-consequences
+   ```
+
+2. Make the ONYX team the required reviewers of the `release` environment, so
+   **Promote to stable** runs. Whoever starts a run can't approve it:
+
+   ```sh
+   gh api -X PUT repos/OreganNetworks/vscode-policy-manager/environments/release --input - <<'EOF'
+   {
+     "reviewers": [{ "type": "Team", "id": 11040468 }],
+     "prevent_self_review": true,
+     "can_admins_bypass": false,
+     "deployment_branch_policy": { "protected_branches": false, "custom_branch_policies": true }
+   }
+   EOF
+   ```
+
+3. A public repository can always be forked, so anyone can open a pull
+   request; only ONYX and the admins can still merge one. Require an approval
+   before CI runs on a pull request from outside the organisation:
+
+   ```sh
+   gh api -X PUT repos/OreganNetworks/vscode-policy-manager/actions/permissions/fork-pr-contributor-approval \
+     -f approval_policy=all_external_contributors
+   ```
+
+4. Once there is a release, check that the update check can read the stable
+   release without signing in:
+
+   ```sh
+   curl -fsSL https://github.com/OreganNetworks/vscode-policy-manager/releases/latest/download/manifest.json
+   ```
 
 ## What it is not
 
