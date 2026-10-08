@@ -136,7 +136,8 @@ export function createUpdater({
   }
 
   async function applyManifest({ sha256, version, vsix }: ReleaseManifest, at: number): Promise<UpdateCheckRecord> {
-    if (compareVersions(version, currentVersion) === 0) {
+    // While an install waits for a reload, that version is the one on disk, so stable back at the running one differs
+    if (installedVersion === undefined && compareVersions(version, currentVersion) === 0) {
       logger.debug(`Update check: ${currentVersion} is the stable release`)
       return { at, detail: `up to date (${currentVersion})`, latestVersion: version, outcome: 'up-to-date' }
     }

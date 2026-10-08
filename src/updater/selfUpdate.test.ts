@@ -166,6 +166,14 @@ describe('createUpdater', () => {
     assert.equal(t.installs.length, 1)
   })
 
+  it('follows stable back to the running version while a newer install waits for a reload', async () => {
+    const t = await setup([manifestResponse(NEWER), manifestResponse(CURRENT, '"v2"')])
+    await t.updater.check()
+    const second = await t.updater.check({ force: true })
+    assert.equal(second.outcome, 'installed')
+    assert.equal(t.installs.length, 2)
+  })
+
   it('skips the cycle another window has taken, unless forced', async () => {
     const t = await setup([manifestResponse(CURRENT), manifestResponse(CURRENT)])
     const first = await t.updater.check()
