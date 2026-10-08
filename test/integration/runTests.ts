@@ -1,11 +1,18 @@
 import { spawnSync } from 'node:child_process'
 import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { downloadAndUnzipVSCode, resolveCliArgsFromVSCodeExecutablePath, runTests } from '@vscode/test-electron'
 import { PROFILE, readDefaultEntry } from './profiles/manifest'
 
 const ROOT = resolve(__dirname, '../../..') // out/test/integration -> repository root
 const CACHE = join(ROOT, '.vscode-test')
+/*
+ * The editor keeps its IPC socket in the user data folder, and macOS limits a socket path to 103 characters, which the
+ * checkout folder of a CI runner plus `.vscode-test/profiles-user-data/1.141-main.sock` passes.  So on macOS the user
+ * data folders go under the temporary folder.
+ */
+const USER_DATA_ROOT = process.platform === 'darwin' ? join(tmpdir(), 'opm-test') : CACHE
 const FIXTURES = ['vscjava.vscode-java-upgrade', 'ms-dotnettools.vscode-dotnet-modernize']
 const VSCE = join(ROOT, 'node_modules', '.bin', process.platform === 'win32' ? 'vsce.cmd' : 'vsce')
 
@@ -36,7 +43,7 @@ async function main(): Promise<void> {
   delete process.env.ELECTRON_RUN_AS_NODE
   const version = process.env.VSCODE_TEST_VERSION ?? '1.90.0'
   const extensionsDir = join(CACHE, 'extensions')
-  const userDataDir = join(CACHE, 'user-data')
+  const userDataDir = join(USER_DATA_ROOT, 'user-data')
   rmSync(extensionsDir, { force: true, recursive: true })
   rmSync(userDataDir, { force: true, recursive: true })
   mkdirSync(join(CACHE, 'fixtures'), { recursive: true })
@@ -74,7 +81,7 @@ async function main(): Promise<void> {
  */
 async function runProfilesSuite({ baseArgs, cli, vscodeExecutablePath }: EditorOptions): Promise<void> {
   const extensionsDir = join(CACHE, 'profiles-extensions')
-  const userDataDir = join(CACHE, 'profiles-user-data')
+  const userDataDir = join(USER_DATA_ROOT, 'profiles-user-data')
   rmSync(extensionsDir, { force: true, recursive: true })
   rmSync(userDataDir, { force: true, recursive: true })
   const vsix = join(CACHE, 'oregan-policy-manager.vsix')
