@@ -176,11 +176,11 @@
     {
       "label": "Add extension",
       "type": "shell",
-      "command": "node scripts/add-extension.mjs \"${input:profile}\"",
+      "command": "node scripts/add-extension.mjs",
       "dependsOn": "package",
       "group": "none",
       "problemMatcher": [],
-      "detail": "Package, then install the VSIX into a profile of your own editor with code --install-extension --profile. The policy applies there for real",
+      "detail": "Package, then install the VSIX into the Default profile of your own editor, and open a Default window if it isn't applied to all profiles yet. The policy applies for real",
       "presentation": { "focus": true, "reveal": "always", "clear": true },
       "options": {
         "statusbar": {
@@ -213,12 +213,6 @@
       "description": "VS Code build to run the integration suite against",
       "options": ["1.90.0", "stable"],
       "default": "1.90.0"
-    },
-    {
-      "id": "profile",
-      "type": "promptString",
-      "description": "Profile to install into: Default, or the name the Manage (gear) menu shows for this window",
-      "default": "Default"
     }
   ]
 }

@@ -60,7 +60,8 @@ F5 in VS Code runs the extension in an isolated profile under `.vscode-test/` -
 never point it at your own profile, it will apply the policy there. The **Try
 extension (clean editor)** task does the same for the packaged VSIX, in a
 throwaway editor under `.vscode-test/try/`; **Add extension** installs it into
-a profile of your own editor.
+the Default profile of your own editor, never with `--profile`: a profile with
+a copy of its own keeps it when stable is rolled back.
 
 ## Layout
 

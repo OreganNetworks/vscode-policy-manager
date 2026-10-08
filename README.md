@@ -44,12 +44,24 @@ The CLI in VS Code 1.140 and later prints a `DeprecationWarning` about
 `url.parse()` during every install. It comes from VS Code's own code, not this
 extension, and is harmless; `NODE_OPTIONS=--no-deprecation` hides it.
 
-The CLI installs into the Default profile. If you use
-[profiles](https://code.visualstudio.com/docs/configure/profiles), install it
-into one you use with `--profile "<name>"`, or open a window with the Default
-profile once. The first time the extension runs, it applies itself to all
-profiles (**Apply Extension to all Profiles**), so from then on every window
-runs it, whatever its profile.
+The CLI installs into the Default profile. The first time the extension runs,
+it applies itself to all profiles (**Apply Extension to all Profiles**), so
+from then on every window runs it, whatever its
+[profile](https://code.visualstudio.com/docs/configure/profiles). If your
+windows use another profile, it can't run until a window with the Default
+profile opens, so open one once:
+
+```sh
+code --profile Default --new-window
+```
+
+Close it once the **Oregan Policy Manager** output says it is applied to all
+profiles, then run **Developer: Reload Window** in your other windows. Don't
+install it with `--profile "<name>"` instead: that profile then keeps a copy of
+its own, which updates never replace, so rolling stable back to an older
+version would not reach it. Uninstalling it, with
+`code --uninstall-extension oregannetworks.oregan-policy-manager`, removes it
+from every profile.
 
 The extension then keeps itself on the stable release (see
 [Versions and updates](#versions-and-updates)). The release repository has to
@@ -179,7 +191,7 @@ settings and extensions. Three ways to run it, from the most isolated:
 |---|---|---|
 | F5 (**Run Extension (isolated profile)**) | The source, in an Extension Development Host | `.vscode-test/dev-user-data` and `.vscode-test/dev-extensions` |
 | **Try extension (clean editor)** task | The packaged VSIX, in a separate editor that it opens | `.vscode-test/try/` - delete it to start afresh |
-| **Add extension** task | The packaged VSIX, in your own editor | The profile you name when it asks (`Default` unless you use profiles) |
+| **Add extension** task | The packaged VSIX, in your own editor | The Default profile, applied to all profiles: it opens a Default window when the extension still has to apply itself |
 
 The two tasks package the VSIX first, then run `scripts/add-extension.mjs`.
 Any separate editor works the same way: `code --user-data-dir <dir>
