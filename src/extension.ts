@@ -157,7 +157,10 @@ function toInstalledExtension(extension: vscode.Extension<unknown>, builtInRoot:
   const manifest = (extension.packageJSON ?? {}) as ManifestFields
   const dependencies = Array.isArray(manifest.extensionDependencies) ? manifest.extensionDependencies : []
   return {
-    // `isBuiltin` isn't public API, so the install location backs it up
+    /*
+     * `isBuiltin` isn't public API, so the install location backs it up.  The editor also sets it on a marketplace copy
+     * installed over a built-in, which lives with the user's extensions and whose uninstall is refused the same way.
+     */
     builtIn: manifest.isBuiltin === true || isInside(extension.extensionPath, builtInRoot),
     dependencies: dependencies.filter((dependency): dependency is string => typeof dependency === 'string'),
     displayName: typeof manifest.displayName === 'string' ? manifest.displayName : extension.id,

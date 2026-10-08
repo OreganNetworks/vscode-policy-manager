@@ -33,10 +33,10 @@ All settings are written to user settings (`ConfigurationTarget.Global`).
 VS Code's built-in AI surface.
 
 VS Code 1.138 and later ship GitHub Copilot Chat (`GitHub.copilot-chat`) as a
-built-in extension, which can't be uninstalled. The extension leaves it in place
-and relies on `chat.disableAIFeatures` to switch it off; once it is off, the
-editor may hide it, so the status report can show it as not installed or
-disabled.
+built-in extension, which can't be uninstalled, and nor can a newer copy of it
+from the Marketplace. The extension leaves either in place and relies on
+`chat.disableAIFeatures` to switch it off; once it is off, the editor may hide
+it, so the status report can show it as not installed or disabled.
 
 Managed extensions, removed in this order so that `github.copilot-chat` has no
 dependants left when it goes:

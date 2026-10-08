@@ -22,7 +22,10 @@ export const MANAGED_EXTENSIONS: readonly string[] = [
 
 /** An extension as the remover sees it, built by `extension.ts` from `vscode.extensions.all` */
 export type InstalledExtension = {
-  /** Shipped with the editor, so it can't be uninstalled - VS Code 1.138 ships `GitHub.copilot-chat` */
+  /**
+   * Shipped with the editor, or a marketplace update of one that is, so it can't be uninstalled - VS Code 1.138 ships
+   * `GitHub.copilot-chat`
+   */
   builtIn: boolean
   /** `extensionDependencies` from its manifest */
   dependencies: readonly string[]
