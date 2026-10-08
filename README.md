@@ -176,9 +176,10 @@ One-time set-up, in the repository settings under **Environments**: create a
 `release` environment with required reviewers, and limit its deployments to
 `main`. The **Promote to stable** workflow runs in it.
 
-To release, bump `version` in `package.json`, commit, then push a matching tag
-(`v0.1.1`). The `Release` workflow tests, packages and publishes the VSIX with
-its `manifest.json`, and marks the release Latest, so it is stable straight
+To release, bump `version` in `package.json` and merge that to `main`, then push
+a matching tag on the merged commit (`v0.1.1`). The `Release` workflow refuses a
+tag on a commit that isn't on `main`. It tests, packages and publishes the VSIX
+with its `manifest.json`, and marks the release Latest, so it is stable straight
 away.
 
 To roll stable back, or forward again, run **Promote to stable** with the
