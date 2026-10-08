@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-export const EXTENSION_ID = 'oregan.oregan-policy-manager'
+export const EXTENSION_ID = 'oregannetworks.oregan-policy-manager'
 /** The named profile the suite installs into; the editor creates it the first time a window opens with it */
 export const PROFILE = 'Work'
 

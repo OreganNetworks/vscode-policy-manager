@@ -35,9 +35,9 @@ code --install-extension oregan-policy-manager-<version>.vsix
 Swap `code` for `codium`, `cursor` or `windsurf` as appropriate. It is not on
 the Marketplace or Open VSX, so searching there won't find it. Once installed,
 it is listed under **Installed** in the Extensions view as **Oregan Policy
-Manager** (`oregan.oregan-policy-manager`), and it logs to the **Oregan Policy
-Manager** channel in the Output panel. If the window was already open, run
-**Developer: Reload Window**.
+Manager** (`oregannetworks.oregan-policy-manager`), and it logs to the
+**Oregan Policy Manager** channel in the Output panel. If the window was
+already open, run **Developer: Reload Window**.
 
 The CLI installs into the Default profile. If you use
 [profiles](https://code.visualstudio.com/docs/configure/profiles), install it

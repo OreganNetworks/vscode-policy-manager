@@ -3,7 +3,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import * as vscode from 'vscode'
 
-const EXTENSION_ID = 'oregan.oregan-policy-manager'
+const EXTENSION_ID = 'oregannetworks.oregan-policy-manager'
 const LOG_FILE = join(EXTENSION_ID, 'Oregan Policy Manager.log')
 /** Managed fixtures (from `MANAGED_EXTENSIONS`), dependant first so removal order is exercised */
 const FIXTURE_IDS = ['ms-dotnettools.vscode-dotnet-modernize', 'vscjava.vscode-java-upgrade']

@@ -7,7 +7,7 @@ import { applyToAllProfiles, readAppliedToAllProfiles } from './applyToAllProfil
 import { createFakeLogger } from '../testing/fakeLogger'
 import { createTempDirs } from '../testing/tempDirs'
 
-const ID = 'oregan.oregan-policy-manager'
+const ID = 'oregannetworks.oregan-policy-manager'
 const temp = createTempDirs('opm-profiles-')
 after(temp.removeAll)
 
@@ -23,7 +23,7 @@ const entry = (id: string, metadata: object) => ({ identifier: { id }, metadata,
 
 describe('readAppliedToAllProfiles', () => {
   it('is true for an entry with isApplicationScoped, matching the ID case-insensitively', async () => {
-    const path = await writeManifest([entry('Oregan.Oregan-Policy-Manager', { isApplicationScoped: true })])
+    const path = await writeManifest([entry('OreganNetworks.Oregan-Policy-Manager', { isApplicationScoped: true })])
     assert.equal(await readAppliedToAllProfiles(path, ID), true)
   })
 

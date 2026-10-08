@@ -19,8 +19,8 @@ type PackageJson = {
 const manifest = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')) as PackageJson
 
 describe('package.json', () => {
-  it('keeps the extension ID oregan.oregan-policy-manager', () => {
-    assert.equal(manifest.publisher, 'oregan')
+  it('keeps the extension ID oregannetworks.oregan-policy-manager', () => {
+    assert.equal(manifest.publisher, 'oregannetworks')
     assert.equal(manifest.name, 'oregan-policy-manager')
   })
 

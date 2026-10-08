@@ -8,8 +8,8 @@ and GitHub Copilot off, Copilot extensions removed, Claude Code recommended. It
 self-updates from GitHub Releases. See `README.md` for the user-facing
 description.
 
-- **Extension ID:** `oregan.oregan-policy-manager` (`publisher: "oregan"`,
-  `name: "oregan-policy-manager"`)
+- **Extension ID:** `oregannetworks.oregan-policy-manager`
+  (`publisher: "oregannetworks"`, `name: "oregan-policy-manager"`)
 - **First version:** `0.1.0`
 - **Repo:** `OreganNetworks/vscode-policy-manager` - also the release repo, so
   the updater URLs are built from this name

@@ -3,7 +3,7 @@
   "displayName": "Oregan Policy Manager",
   "description": "Keeps editor telemetry and GitHub Copilot off and points developers at Claude Code, as Oregan's Agentic AI Development Policy requires.",
   "version": "0.1.0",
-  "publisher": "oregan",
+  "publisher": "oregannetworks",
   "license": "UNLICENSED",
   "private": true,
   "repository": {

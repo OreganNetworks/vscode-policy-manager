@@ -48,9 +48,9 @@ type ManifestEntry = {
  *          `undefined` when the file can't be read or isn't the list the editor writes.
  *
  * @example
- * // extensions.json: [{ "identifier": { "id": "oregan.oregan-policy-manager" },
+ * // extensions.json: [{ "identifier": { "id": "oregannetworks.oregan-policy-manager" },
  * //                     "metadata": { "isApplicationScoped": true, "pinned": true, "source": "vsix" } }]
- * await readAppliedToAllProfiles('/home/me/.vscode/extensions/extensions.json', 'oregan.oregan-policy-manager')
+ * await readAppliedToAllProfiles('/home/me/.vscode/extensions/extensions.json', 'oregannetworks.oregan-policy-manager')
  * // true
  */
 export async function readAppliedToAllProfiles(manifestPath: string, id: string): Promise<boolean | undefined> {
