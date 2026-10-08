@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import * as vscode from 'vscode'
 import { EXTENSION_ID, waitFor } from './manifest'
@@ -10,6 +11,8 @@ type CliInstall = {
   cliInstallCommand(options: {
     appRoot: string
     cli: string
+    execPath: string
+    exists: (path: string) => boolean
     extensionPath: string
     globalStoragePath: string
     platform: NodeJS.Platform
@@ -31,6 +34,8 @@ export async function run(): Promise<void> {
   const command = cliInstallCommand({
     appRoot: vscode.env.appRoot,
     cli: 'code',
+    execPath: process.execPath,
+    exists: existsSync,
     extensionPath: ours.extensionPath,
     // An extension applied to all profiles keeps its global storage in the default profile, in every window
     globalStoragePath: join(env('OPM_TEST_USER_DATA_DIR'), 'User', 'globalStorage', EXTENSION_ID),

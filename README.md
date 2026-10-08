@@ -130,6 +130,10 @@ The update is installed with the editor's own CLI (`code --install-extension`),
 into the Default profile. The extension runs in every profile from there, so the
 update reaches all of them whichever window does the check. Installed from a
 window with another profile in any other way, it would reach that profile only.
+The CLI is looked for where VS Code itself finds it: `bin/` inside the app on
+macOS, and beside the editor executable on Linux and Windows. An editor without
+one there gets the update through its own install command instead, with a
+warning in the output channel.
 
 Update checks are off in the Extension Development Host (F5) and the
 integration suite, where the running code isn't a release.

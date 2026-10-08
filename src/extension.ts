@@ -291,18 +291,20 @@ async function installVsix({ context, host, log, vsixPath }: InstallVsixOptions)
   const command = cliInstallCommand({
     appRoot: vscode.env.appRoot,
     cli: host.cli,
+    execPath: process.execPath,
+    exists: existsSync,
     extensionPath: context.extensionPath,
     globalStoragePath: context.globalStorageUri.fsPath,
     platform: process.platform,
     vsixPath,
   })
-  if (command && existsSync(command.command)) {
+  if (command) {
     log.debug(`Update: ${await runCliInstall(command)}`)
     return
   }
   log.warn(
-    `Update: no ${host.cli} CLI beside the editor, so it installs through the editor - from a window with a named ` +
-      'profile, only that profile gets the update',
+    `Update: no ${host.cli} CLI where the editor keeps it, so it installs through the editor - from a window with a ` +
+      'named profile, only that profile gets the update',
   )
   await vscode.commands.executeCommand('workbench.extensions.installExtension', vscode.Uri.file(vsixPath))
 }

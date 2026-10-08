@@ -14,8 +14,12 @@ const CLI_TIMEOUT_MS = 2 * 60 * 1000 // an install takes seconds; this only stop
 export type CliInstallOptions = {
   /** `vscode.env.appRoot`: the `resources/app` folder of the editor install */
   appRoot: string
-  /** The CLI for the host editor, from `detectHost()`: `code`, `codium`, `cursor` or `windsurf` */
+  /** The CLI for the host editor, from `detectHost()`: `code`, `code-insiders`, `codium`, `cursor` or `windsurf` */
   cli: string
+  /** `process.execPath`: the editor executable on Linux and Windows, a helper inside the app folder on macOS */
+  execPath: string
+  /** Whether a file exists: `existsSync` */
+  exists: (path: string) => boolean
   /** `ExtensionContext.extensionPath`, which sits in the extensions folder beside the other extensions */
   extensionPath: string
   /** `ExtensionContext.globalStorageUri.fsPath`, which sits under the user data folder */
@@ -38,13 +42,23 @@ export type CliCommand = {
  * window uses - set explicitly, so a portable install or one started with `--user-data-dir` gets the same folders.
  * `--force` lets it install an older version, for a rollback.
  *
+ * The CLI is looked for where VS Code itself finds it (`cliPath` in `nativeHostMainService.ts`), then where an older
+ * layout keeps it:
+ * - macOS: `bin/` inside the app folder.  The VS Code build always names the launcher there `code`, VS Code Insiders
+ *   included, and a fork may name it after its own CLI, so both names are tried.
+ * - Linux and Windows: `bin/` beside the executable, then beside `resources/`.  With versioned updates on Windows,
+ *   `resources/` sits in a folder for each version, and `bin\` stays beside the executable.
+ *
  * @param options  Where the editor, this extension and its global storage are.
- * @returns The call, or `undefined` when the user data folder can't be worked out from the global storage path.
+ * @returns The call, or `undefined` when the user data folder can't be worked out from the global storage path, or
+ *          there is no CLI in any of those places.
  *
  * @example
  * cliInstallCommand({
  *   appRoot: '/usr/share/code/resources/app',
  *   cli: 'code',
+ *   execPath: '/usr/share/code/code',
+ *   exists: existsSync,
  *   extensionPath: '/home/me/.vscode/extensions/oregannetworks.oregan-policy-manager-0.1.0',
  *   globalStoragePath: '/home/me/.config/Code/User/globalStorage/oregannetworks.oregan-policy-manager',
  *   platform: 'linux',
@@ -56,6 +70,8 @@ export type CliCommand = {
 export function cliInstallCommand({
   appRoot,
   cli,
+  execPath,
+  exists,
   extensionPath,
   globalStoragePath,
   platform,
@@ -64,9 +80,13 @@ export function cliInstallCommand({
   const userDataDir = userDataDirFrom(globalStoragePath, platform)
   if (userDataDir === undefined) return undefined
   const path = platform === 'win32' ? win32 : posix
-  // macOS keeps bin/ inside the app folder; Linux and Windows keep it beside resources/
-  const binDir = platform === 'darwin' ? path.join(appRoot, 'bin') : path.join(appRoot, '..', '..', 'bin')
-  const command = path.join(binDir, platform === 'win32' ? `${cli}.cmd` : cli)
+  const name = platform === 'win32' ? `${cli}.cmd` : cli
+  const candidates =
+    platform === 'darwin'
+      ? [path.join(appRoot, 'bin', name), path.join(appRoot, 'bin', 'code')]
+      : [path.join(path.dirname(execPath), 'bin', name), path.join(appRoot, '..', '..', 'bin', name)]
+  const command = candidates.find(candidate => exists(candidate))
+  if (command === undefined) return undefined
   const args = [
     `--extensions-dir=${path.dirname(extensionPath)}`,
     `--user-data-dir=${userDataDir}`,
