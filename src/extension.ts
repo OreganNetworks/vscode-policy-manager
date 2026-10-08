@@ -87,7 +87,12 @@ export function activate(context: vscode.ExtensionContext): void {
   let schedule: { dispose(): void } | undefined
   const deferred = setImmediate(function startAfterActivation() {
     detach(log, 'Start-up', startUp())
-    schedule = scheduleChecks({ check: () => updater.check(), logger: log })
+    // The Extension Development Host and the integration suite run code that isn't a release
+    if (context.extensionMode === vscode.ExtensionMode.Production) {
+      schedule = scheduleChecks({ check: () => updater.check(), logger: log })
+    } else {
+      log.info('Update checks are off outside a release install - Oregan: Check for Updates still runs one')
+    }
   })
   context.subscriptions.push({
     dispose() {
@@ -223,7 +228,7 @@ function showCheckResult(
       return
     case 'up-to-date':
       // A release installed earlier this session counts as up to date, but only runs once the window reloads
-      if (latestVersion && compareVersions(latestVersion, version) > 0) {
+      if (latestVersion && compareVersions(latestVersion, version) !== 0) {
         detach(log, 'Reload prompt', showReloadPrompt(latestVersion))
         return
       }

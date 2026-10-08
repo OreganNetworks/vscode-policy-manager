@@ -88,7 +88,8 @@ test/fixtures/    # fake managed extensions the suite installs
 scripts/write-manifest.mjs
 scripts/add-extension.mjs      # the Add extension and Try extension tasks
 .github/workflows/ci.yml       # every PR: lint, format, typecheck, build, test, package, integration
-.github/workflows/release.yml  # v* tags: test, package, publish the VSIX and manifest.json
+.github/workflows/release.yml  # v* tags: test, package, publish the VSIX and manifest.json as Latest (stable)
+.github/workflows/promote.yml  # Promote to stable: mark an earlier (or later) release Latest, behind reviewers
 ```
 
 ## Design constraints
@@ -125,6 +126,10 @@ These are the ones that are easy to get wrong:
     - fetch `releases/latest/download/manifest.json` unauthenticated - a plain
       download URL is not subject to the REST API's 60 requests/hour limit,
       which matters with many developers behind one office IP
+    - follow the stable release, which is the one GitHub marks Latest: install
+      it whenever its version differs from the running one, older included, so
+      rolling stable back reaches every copy. Checks are off outside
+      `ExtensionMode.Production` (F5, the integration suite)
     - verify the SHA-256 before `workbench.extensions.installExtension`
     - one window per cycle, via a short-lived lock file in `globalStorageUri`
     - every 60 minutes plus up to 5 minutes of jitter, cleared in `deactivate()`

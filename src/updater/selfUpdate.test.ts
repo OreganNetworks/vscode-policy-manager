@@ -80,7 +80,7 @@ async function setup(responses: HttpResult[], overrides: Partial<UpdaterOptions>
 }
 
 describe('createUpdater', () => {
-  it('does nothing when the latest release is the running version', async () => {
+  it('does nothing when the stable release is the running version', async () => {
     const t = await setup([manifestResponse(CURRENT)])
     const record = await t.updater.check()
     assert.equal(record.outcome, 'up-to-date')
@@ -111,12 +111,16 @@ describe('createUpdater', () => {
     assert.equal(record.outcome, 'up-to-date')
   })
 
-  it('never installs an older release', async () => {
-    const t = await setup([
-      manifestResponse({ ...CURRENT, version: '0.0.9', vsix: 'oregan-policy-manager-0.0.9.vsix' }),
-    ])
-    assert.equal((await t.updater.check()).outcome, 'up-to-date')
-    assert.deepEqual(t.installs, [])
+  it('installs an older stable release, so a rollback reaches every copy', async () => {
+    const older = { ...CURRENT, version: '0.0.9', vsix: 'oregan-policy-manager-0.0.9.vsix' }
+    const t = await setup([manifestResponse(older)])
+    const record = await t.updater.check()
+    assert.equal(record.outcome, 'installed')
+    assert.deepEqual(
+      t.downloads.map(({ url }) => url),
+      [`${RELEASES_URL}/download/v0.0.9/${older.vsix}`],
+    )
+    assert.deepEqual(t.installed, ['0.0.9'])
   })
 
   it('fails safe on a malformed manifest and keeps the previous cache', async () => {

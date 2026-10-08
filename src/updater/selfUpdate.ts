@@ -1,8 +1,9 @@
 /*
  * REQUIREMENT: Self-update
  *
- * Checks GitHub Releases on start-up and hourly, one window per cycle, and installs a newer release once its SHA-256
- * matches.  `manifest.ts`, `download.ts` and `lock.ts` are its parts.
+ * Checks GitHub Releases on start-up and hourly, one window per cycle, and installs the stable release whenever its
+ * version differs from the running one, once its SHA-256 matches.  `manifest.ts`, `download.ts` and `lock.ts` are its
+ * parts.
  */
 import { rm } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -13,7 +14,10 @@ import { compareVersions, parseManifest, type ReleaseManifest } from './manifest
 
 /** GitHub Releases for this repository */
 export const RELEASES_URL = 'https://github.com/OreganNetworks/vscode-policy-manager/releases'
-/** A plain download URL rather than the REST API, so it isn't held to 60 requests an hour per IP */
+/**
+ * The manifest for the stable release, which is the one GitHub marks Latest.  A plain download URL rather than the REST
+ * API, so it isn't held to 60 requests an hour per IP.
+ */
 export const MANIFEST_URL = `${RELEASES_URL}/latest/download/manifest.json`
 export const CHECK_INTERVAL_MS = 60 * 60 * 1000 // hourly
 export const CHECK_JITTER_MS = 5 * 60 * 1000 // up to 5 minutes on each interval
@@ -38,6 +42,7 @@ export type UpdateCheckRecord = {
   at: number
   detail: string
   outcome: UpdateOutcome
+  /** The version of the stable release, once the check has read it */
   latestVersion?: string
 }
 
@@ -90,8 +95,9 @@ type ManifestFetch = {
 }
 
 /**
- * Update check: fetch `manifest.json`, and when it names a newer version, download the VSIX, verify its SHA-256
- * and install it.  Any failure is logged and recorded, and the running version carries on until the next check.
+ * Update check: fetch `manifest.json`, and when it names a version other than the running one, download the VSIX,
+ * verify its SHA-256 and install it.  An older version counts: stable can be rolled back, and every copy follows it.
+ * Any failure is logged and recorded, and the running version carries on until the next check.
  *
  * Overlapping calls share one check.  The cache only moves forward on a check that completes, so a malformed
  * manifest can't leave behind an ETag that would hide the next good one.
@@ -130,8 +136,8 @@ export function createUpdater({
   }
 
   async function applyManifest({ sha256, version, vsix }: ReleaseManifest, at: number): Promise<UpdateCheckRecord> {
-    if (compareVersions(version, currentVersion) <= 0) {
-      logger.debug(`Update check: ${currentVersion} is current (latest release ${version})`)
+    if (compareVersions(version, currentVersion) === 0) {
+      logger.debug(`Update check: ${currentVersion} is the stable release`)
       return { at, detail: `up to date (${currentVersion})`, latestVersion: version, outcome: 'up-to-date' }
     }
     if (version === installedVersion)
@@ -143,7 +149,7 @@ export function createUpdater({
       }
 
     const vsixPath = join(storageDir, DOWNLOAD_DIR, vsix)
-    logger.info(`Update check: downloading ${version}`)
+    logger.info(`Update check: downloading ${version}, the stable release (running ${currentVersion})`)
     await download({
       dest: vsixPath,
       expectedSha256: sha256,

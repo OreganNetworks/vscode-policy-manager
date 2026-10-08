@@ -14,6 +14,7 @@ NDA commitments and the
 - [Install](#install)
 - [What it does](#what-it-does)
   - [Commands](#commands)
+- [Versions and updates](#versions-and-updates)
 - [Supported editors](#supported-editors)
 - [Development](#development)
   - [Running it](#running-it)
@@ -45,9 +46,9 @@ either add `--profile "<name>"` to the command, or open the Extensions view in
 the Default profile and choose **Apply Extension to all Profiles** from the gear
 menu of the extension.
 
-The extension then checks for a new release on start-up and every hour, and
-offers a window reload once one is installed. The release repository has to be
-public for that check to work.
+The extension then keeps itself on the stable release (see
+[Versions and updates](#versions-and-updates)). The release repository has to
+be public for that check to work.
 
 ## What it does
 
@@ -58,7 +59,7 @@ public for that check to work.
 | Copilot extensions | Uninstalls the Copilot family and the extensions that depend on it (below), and does the same again on a later reinstall |
 | Drift | Restores a managed setting that is changed away from its policy value |
 | Claude Code | Recommends `anthropic.claude-code` in the **Oregan Policy Manager** output channel - nothing is installed automatically |
-| Updates | Checks GitHub Releases on load and every hour, verifies the VSIX SHA-256, then installs it |
+| Updates | Follows the stable release: checks on load and every hour, verifies the VSIX SHA-256, then installs it whenever its version differs from the running one |
 
 All settings are written to user settings (`ConfigurationTarget.Global`).
 `chat.disableAIFeatures` does not affect Claude Code, which sits outside
@@ -90,6 +91,25 @@ removal go ahead in the same window.
 |---|---|
 | `Oregan: Show Policy Status` | Editor and version, each managed setting and its value, Copilot presence, Claude Code status, extension version and last update check |
 | `Oregan: Check for Updates` | Runs the update check immediately |
+
+## Versions and updates
+
+Every installed copy follows the **stable** release, which is the one GitHub
+marks **Latest** on the
+[releases page](https://github.com/OreganNetworks/vscode-policy-manager/releases).
+A new release is stable as soon as it is published. Stable can be rolled back to
+an earlier release at any time (see [Releasing](#releasing)).
+
+On start-up and then every hour, the extension reads `manifest.json` from the
+stable release and installs that release whenever its version differs from the
+running one, older or newer. A rollback therefore reaches every copy within the
+hour, and offers a window reload like any other update. A copy installed by
+hand that isn't the stable release, such as a local build, keeps running until
+the next reload after that check.
+
+Update checks are off in the Extension Development Host (F5) and the
+integration suite, where the running code isn't a release.
+`Oregan: Check for Updates` still runs one there.
 
 ## Supported editors
 
@@ -150,9 +170,26 @@ state, and leaves your own editor alone.
 
 ### Releasing
 
+One-time set-up, in the repository settings under **Environments**: create a
+`release` environment with required reviewers, and limit its deployments to
+`main`. The **Promote to stable** workflow runs in it.
+
 To release, bump `version` in `package.json`, commit, then push a matching tag
 (`v0.1.1`). The `Release` workflow tests, packages and publishes the VSIX with
-its `manifest.json`.
+its `manifest.json`, and marks the release Latest, so it is stable straight
+away.
+
+To roll stable back, or forward again, run **Promote to stable** with the
+version stable should be:
+
+```sh
+run=$(gh workflow run promote.yml -f version=0.1.0) && gh run watch "${run##*/}"
+```
+
+After a reviewer approves, it checks that `v0.1.0` is published with its VSIX
+and `manifest.json`, marks it Latest, and writes the version stable moved from
+to the run summary, so the same command with that version undoes it. The next
+tag makes its own release stable again.
 
 ## What it is not
 

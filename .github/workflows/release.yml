@@ -1,7 +1,8 @@
 name: Release
 
-# Every v* tag builds the VSIX, writes manifest.json and publishes both as a GitHub Release.
-# The updater reads releases/latest/download/manifest.json, so a draft or pre-release is never picked up.
+# Every v* tag builds the VSIX, writes manifest.json and publishes both as a GitHub Release marked Latest.
+# Latest is the stable release: every installed copy reads releases/latest/download/manifest.json and installs that
+# version, so a new release reaches every copy within the hour.  promote.yml moves stable back to an earlier release.
 on:
   push:
     tags: ['v*']
@@ -39,4 +40,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" "oregan-policy-manager-${GITHUB_REF_NAME#v}.vsix" manifest.json \
-            --title "$GITHUB_REF_NAME" --generate-notes
+            --title "$GITHUB_REF_NAME" --generate-notes --latest
