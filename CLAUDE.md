@@ -72,6 +72,7 @@ src/
   policy/         # what the policy enforces, one requirement per file
     applyToAllProfiles.ts       # every profile
     keepOutOfSync.ts            # out of Settings Sync
+    workspaceOverrides.ts       # the warning while a workspace setting overrides the policy
     settings.ts                 # telemetry off; built-in AI and Copilot settings off
     keepSettings.ts             # keeping settings in place
     removeCopilotExtensions.ts  # Copilot extension removal
@@ -110,7 +111,9 @@ These are the ones that are easy to get wrong:
 
 1. **User settings only.** Write with `ConfigurationTarget.Global`. Never write
    workspace or folder settings - the per-repo `.vscode` approach is what this
-   replaces.
+   replaces. A workspace or folder value that overrides the policy gets an
+   error notification instead, shown again each time it is closed until the
+   override is gone (`policy/workspaceOverrides.ts`).
 2. **Only write registered keys.** `update()` throws for a key no installed
    component has registered, so check `getConfiguration().inspect(key)` first
    and skip (and log) anything unregistered. This is what lets one VSIX run

@@ -47,8 +47,10 @@ async function main(): Promise<void> {
   const version = process.env.VSCODE_TEST_VERSION ?? '1.90.0'
   const extensionsDir = join(CACHE, 'extensions')
   const userDataDir = join(USER_DATA_ROOT, 'user-data')
-  rmSync(extensionsDir, { force: true, recursive: true })
-  rmSync(userDataDir, { force: true, recursive: true })
+  // An empty folder for the window, so a test can write a workspace setting
+  const workspaceDir = join(CACHE, 'workspace')
+  for (const dir of [extensionsDir, userDataDir, workspaceDir]) rmSync(dir, { force: true, recursive: true })
+  mkdirSync(workspaceDir, { recursive: true })
   mkdirSync(join(CACHE, 'fixtures'), { recursive: true })
 
   const vscodeExecutablePath = await downloadAndUnzipVSCode(version)
@@ -68,7 +70,7 @@ async function main(): Promise<void> {
     extensionDevelopmentPath: ROOT,
     extensionTestsEnv: { OPM_TEST_EXTENSIONS_DIR: extensionsDir, OPM_TEST_USER_DATA_DIR: userDataDir },
     extensionTestsPath: join(__dirname, 'suite'),
-    launchArgs: [...profileArgs, '--disable-workspace-trust'],
+    launchArgs: [...profileArgs, '--disable-workspace-trust', workspaceDir],
     vscodeExecutablePath,
   })
   const packaged = await runProfilesSuite({ baseArgs, cli, vscodeExecutablePath })

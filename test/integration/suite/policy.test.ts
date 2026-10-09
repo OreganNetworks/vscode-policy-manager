@@ -131,4 +131,17 @@ describe('Oregan Policy Manager', () => {
     await waitFor(() => (log = readOutputLog()).includes('Overall:'), 'the status report in the output log')
     assert.match(log, /^Overall: compliant$/m)
   })
+
+  // Last: turning the AI back on in this window starts the built-in Copilot Chat, which registers more managed keys
+  it('warns while a workspace setting turns the built-in AI back on, until it is removed', async function () {
+    if (inspect('chat.disableAIFeatures')?.defaultValue === undefined) return this.skip()
+    const configuration = vscode.workspace.getConfiguration()
+    await configuration.update('chat.disableAIFeatures', false, vscode.ConfigurationTarget.Workspace)
+    await waitFor(
+      () => readOutputLog().includes('Notification: Oregan Policy Manager: this workspace sets chat.disableAIFeatures'),
+      'the override warning in the output log',
+    )
+    await configuration.update('chat.disableAIFeatures', undefined, vscode.ConfigurationTarget.Workspace)
+    await waitFor(() => readOutputLog().includes('Workspace overrides: none any more'), 'the override to be gone')
+  })
 })

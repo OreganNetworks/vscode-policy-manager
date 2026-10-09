@@ -44,6 +44,13 @@ import {
 import { CLAUDE_CODE_ID, claudeCodeMessage } from './policy/recommendClaudeCode'
 import { createSettingsLock } from './settingsLock'
 import { isSetupWindow } from './setupWindow'
+import {
+  createOverrideWarning,
+  findWorkspaceOverrides,
+  type OverrideWarningAnswer,
+  overrideMessage,
+  type WorkspaceOverride,
+} from './policy/workspaceOverrides'
 import { collectStatusSnapshot, formatStatusReport } from './status'
 import {
   createUpdater,
@@ -61,6 +68,7 @@ const SETTINGS_LOCK_FILE = 'settings-write.lock'
 const READ_THE_POLICY = 'Read the policy'
 const RELOAD_WINDOW = 'Reload Window'
 const SHOW_DETAILS = 'Show Details'
+const OPEN_WORKSPACE_SETTINGS = 'Open Workspace Settings'
 
 /**
  * Entry point.  Only this module imports `vscode`: it builds the ports the policy modules take, wires them together
@@ -106,6 +114,12 @@ export function activate(context: vscode.ExtensionContext): void {
     logger: log,
     store,
   })
+  // Per window: the workspace settings belong to this window's folder or workspace
+  const overrideWarning = createOverrideWarning({
+    find: () => findWorkspaceOverrides(store),
+    logger: log,
+    show: overrides => showOverrideWarning(overrides, log),
+  })
   const updater = createUpdater({
     cache: updaterCache,
     currentVersion: version,
@@ -146,7 +160,9 @@ export function activate(context: vscode.ExtensionContext): void {
           'Settings Sync lists',
           settingsLock.run('Settings Sync lists', () => keepOutOfSync(syncExclusions)),
         )
+      overrideWarning.check()
     }),
+    vscode.workspace.onDidChangeWorkspaceFolders(() => overrideWarning.check()),
     vscode.extensions.onDidChange(() => detach(log, 'Copilot removal', remover.run())),
   )
 
@@ -178,12 +194,14 @@ export function activate(context: vscode.ExtensionContext): void {
       clearImmediate(deferred)
       schedule?.dispose()
       detach(log, 'Settings lock', settingsLock.dispose())
+      overrideWarning.dispose()
     },
   })
 
   async function startUp(): Promise<void> {
     notices.showSaved()
     await settingsLock.run('Start-up', applySettings)
+    overrideWarning.check()
     // Every window, as extensions are per profile, and the editor queues the uninstalls
     await remover.run()
     const claudeCodeInstalled = registry.list().some(extension => extension.id.toLowerCase() === CLAUDE_CODE_ID)
@@ -386,6 +404,28 @@ async function notify(log: vscode.LogOutputChannel, message: string, ...items: s
   const choice = await vscode.window.showInformationMessage(message, ...items)
   log.info(`Notification: ${choice === undefined ? 'closed' : `${choice} chosen`}`)
   return choice
+}
+
+/**
+ * The warning for a workspace override (see `policy/workspaceOverrides.ts`): an error message, so it stays on screen
+ * until it is closed, as the editor hides other notifications with buttons after a while.
+ */
+async function showOverrideWarning(
+  overrides: readonly WorkspaceOverride[],
+  log: vscode.LogOutputChannel,
+): Promise<OverrideWarningAnswer> {
+  const message = overrideMessage(overrides)
+  log.info(`Notification: ${message}`)
+  const choice = await vscode.window.showErrorMessage(message, OPEN_WORKSPACE_SETTINGS, READ_THE_POLICY)
+  log.info(`Notification: ${choice === undefined ? 'closed' : `${choice} chosen`}`)
+  if (choice === READ_THE_POLICY) await vscode.env.openExternal(vscode.Uri.parse(POLICY_URL))
+  if (choice !== OPEN_WORKSPACE_SETTINGS) return 'closed'
+  // A folder setting of a multi-root workspace is in that folder's settings; the editor asks which folder
+  const inWorkspace = overrides.some(override => override.scope === 'workspace')
+  await vscode.commands.executeCommand(
+    inWorkspace ? 'workbench.action.openWorkspaceSettingsFile' : 'workbench.action.openFolderSettingsFile',
+  )
+  return 'opened-settings'
 }
 
 async function showRemoved(names: readonly string[], log: vscode.LogOutputChannel): Promise<void> {

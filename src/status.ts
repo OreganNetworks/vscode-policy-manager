@@ -16,10 +16,10 @@ import {
   type SettingValue,
 } from './policy/settings'
 import { CLAUDE_CODE_ID } from './policy/recommendClaudeCode'
+import { findWorkspaceOverride, type SettingOverride } from './policy/workspaceOverrides'
 import { type UpdateCheckRecord } from './updater/selfUpdate'
 
-/** Where a value overriding the user setting lives */
-export type SettingOverride = 'workspace' | 'workspace folder'
+export type { SettingOverride }
 
 /** One managed setting, as the status report shows it */
 export type SettingStatus = {
@@ -78,7 +78,7 @@ export function describeSetting(setting: ManagedSetting, inspection: SettingInsp
   const { key, value: expected } = setting
   const registered = isRegistered(inspection)
   const global = inspection?.globalValue
-  const overriddenBy = findOverride(expected, inspection)
+  const overriddenBy = findWorkspaceOverride(expected, inspection)?.scope
   const inEffect = mergeOverDefault(expected, inspection?.defaultValue)
   return {
     compliant: !registered || (isSettingEqual(inspection?.effectiveValue, inEffect) && !overriddenBy),
@@ -163,13 +163,6 @@ function mergeOverDefault(value: SettingValue, defaultValue: unknown): unknown {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function findOverride(expected: SettingValue, inspection: SettingInspection | undefined): SettingOverride | undefined {
-  const { workspaceFolderValues = [], workspaceValue } = inspection ?? {}
-  if (workspaceFolderValues.some(value => !isSettingEqual(value, expected))) return 'workspace folder'
-  if (workspaceValue !== undefined && !isSettingEqual(workspaceValue, expected)) return 'workspace'
-  return undefined
 }
 
 /** A pending reload isn't compliant yet, but when it is all that is left, a reload is all the machine needs */
