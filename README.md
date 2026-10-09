@@ -149,7 +149,10 @@ Every installed copy follows the **stable** release, which is the one GitHub
 marks **Latest** on the
 [releases page](https://github.com/OreganNetworks/vscode-policy-manager/releases).
 A new release is stable as soon as it is published. Stable can be rolled back to
-an earlier release at any time (see [Releasing](#releasing)).
+an earlier release at any time (see [Releasing](#releasing)). "Stable" is only a
+name for the release marked Latest, not a separate channel, so the
+`releases/latest/download/` links that the update check and the install
+scripts use always serve the stable release.
 
 On start-up and then every hour, the extension reads `manifest.json` from the
 stable release and installs that release whenever its version differs from the
