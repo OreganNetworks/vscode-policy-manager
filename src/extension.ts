@@ -14,13 +14,7 @@ import {
   type InstalledExtension,
   MANAGED_EXTENSIONS,
 } from './policy/removeCopilotExtensions'
-import {
-  type BurstState,
-  type BurstStore,
-  createBurstGuard,
-  createDriftHandler,
-  DRIFT_BURST,
-} from './policy/keepSettings'
+import { createBurstGuard, createDriftHandler, createFileBurstStore, DRIFT_BURST } from './policy/keepSettings'
 import { aiFirstHostMessage, detectHost, type HostInfo } from './host'
 import { IDE_CONFIGURATION_URL, POLICY_URL } from './links'
 import { describeError } from './logger'
@@ -63,7 +57,7 @@ import {
 const OUTPUT_CHANNEL_NAME = 'Oregan Policy Manager'
 const UPDATER_STATE_KEY = 'updater'
 const NOTICES_STATE_KEY = 'notices'
-const DRIFT_STATE_KEY = 'driftRestores'
+const DRIFT_RESTORES_FILE = 'drift-restores.json'
 const SETTINGS_LOCK_FILE = 'settings-write.lock'
 const READ_THE_POLICY = 'Read the policy'
 const RELOAD_WINDOW = 'Reload Window'
@@ -110,7 +104,11 @@ export function activate(context: vscode.ExtensionContext): void {
       else detach(log, 'Drift notification', notices.forget(noticeForRestore(key)))
     },
     beforeFirstRestore: key => notices.save(noticeForRestore(key)),
-    guard: createBurstGuard({ ...DRIFT_BURST, store: createBurstStore(context) }),
+    // Read and written by the drift handler, which runs under the settings lock, so every window reads the same count
+    guard: createBurstGuard({
+      ...DRIFT_BURST,
+      store: createFileBurstStore({ logger: log, path: join(context.globalStorageUri.fsPath, DRIFT_RESTORES_FILE) }),
+    }),
     logger: log,
     store,
   })
@@ -333,16 +331,6 @@ function createNoticeStore(context: vscode.ExtensionContext): NoticeStore {
     get: () => context.workspaceState.get<SavedNotice[]>(NOTICES_STATE_KEY),
     async set(value) {
       await context.workspaceState.update(NOTICES_STATE_KEY, value)
-    },
-  }
-}
-
-/** Shared by the windows, and kept when the extension host restarts, as restoring an AI setting can make it */
-function createBurstStore(context: vscode.ExtensionContext): BurstStore {
-  return {
-    get: () => context.globalState.get<BurstState>(DRIFT_STATE_KEY),
-    async set(value) {
-      await context.globalState.update(DRIFT_STATE_KEY, value)
     },
   }
 }

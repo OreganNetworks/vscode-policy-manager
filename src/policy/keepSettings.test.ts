@@ -1,9 +1,26 @@
 import assert from 'node:assert/strict'
-import { describe, it } from 'node:test'
-import { createBurstGuard, createDriftHandler, createMemoryBurstStore, DRIFT_BURST } from './keepSettings'
+import { mkdir, writeFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
+import { after, describe, it } from 'node:test'
+import {
+  createBurstGuard,
+  createDriftHandler,
+  createFileBurstStore,
+  createMemoryBurstStore,
+  DRIFT_BURST,
+} from './keepSettings'
 import { MANAGED_SETTINGS, type SettingInspection } from './settings'
 import { createFakeLogger } from '../testing/fakeLogger'
 import { createFakeStore, stockEntries } from '../testing/fakeSettingsStore'
+import { createTempDirs } from '../testing/tempDirs'
+
+const temp = createTempDirs('opm-keep-settings-')
+after(temp.removeAll)
+
+/** A count file under a folder that doesn't exist yet, as in a new global storage */
+async function countPath(): Promise<string> {
+  return join(await temp.make(), 'globalStorage', 'drift-restores.json')
+}
 
 describe('createBurstGuard', () => {
   const SHORT = { limit: 2, suspendMs: 60_000, windowMs: 1000 }
@@ -38,6 +55,43 @@ describe('createBurstGuard', () => {
     await createBurstGuard({ ...SHORT, store }).check('a', 100)
     assert.equal(await createBurstGuard({ ...SHORT, store }).check('a', 200), 'suspended-now')
     assert.equal(await createBurstGuard({ ...SHORT, store }).check('a', 300), 'suspended')
+  })
+})
+
+describe('createFileBurstStore', () => {
+  it('reads back the count it saved', async () => {
+    const store = createFileBurstStore({ logger: createFakeLogger(), path: await countPath() })
+    assert.equal(await store.get(), undefined)
+    const state = { restores: { a: [1, 2] }, suspendedUntil: { b: 3 } }
+    await store.set(state)
+    assert.deepEqual(await store.get(), state)
+  })
+
+  it('reads a file that holds no count as no restores, and says so', async () => {
+    const path = await countPath()
+    await mkdir(dirname(path), { recursive: true })
+    for (const content of ['{"restores": ', '{"restores": {"a": ["1"]}, "suspendedUntil": {}}']) {
+      await writeFile(path, content)
+      const logger = createFakeLogger()
+      assert.equal(await createFileBurstStore({ logger, path }).get(), undefined)
+      assert.equal(logger.lines.filter(line => line.startsWith('warn:')).length, 1, logger.lines.join('\n'))
+    }
+  })
+
+  it('gives two windows one count, so a key one window suspends stays suspended in the other', async () => {
+    const path = await countPath()
+    const window = () =>
+      createBurstGuard({
+        limit: 2,
+        store: createFileBurstStore({ logger: createFakeLogger(), path }),
+        suspendMs: 60_000,
+        windowMs: 1000,
+      })
+    const [first, second] = [window(), window()]
+    assert.equal(await first.check('a', 0), 'allowed')
+    assert.equal(await second.check('a', 100), 'allowed')
+    assert.equal(await first.check('a', 200), 'suspended-now')
+    assert.equal(await second.check('a', 300), 'suspended')
   })
 })
 

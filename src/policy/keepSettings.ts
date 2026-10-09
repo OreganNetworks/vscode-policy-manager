@@ -5,7 +5,9 @@
  * extension installed after start-up registers.  Workspace and folder values are never written - the status report
  * shows an override instead.
  */
-import { type Logger } from '../logger'
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { dirname } from 'node:path'
+import { describeError, type Logger } from '../logger'
 import {
   applySetting,
   isRegistered,
@@ -41,12 +43,19 @@ export type BurstState = {
 }
 
 /**
- * Where a {@link BurstGuard} keeps its count.  `ExtensionContext.globalState` outlives the extension host, which a
- * restore of an AI setting restarts, and is shared by the windows, one of which restores at a time.
+ * Where a {@link BurstGuard} keeps its count.  The real one, {@link createFileBurstStore}, is a file the windows share,
+ * which outlives the extension host that a restore of an AI setting restarts.
  */
 export type BurstStore = {
-  get(): BurstState | undefined
+  get(): Promise<BurstState | undefined>
   set(state: BurstState): Promise<void>
+}
+
+/** Arguments to {@link createFileBurstStore} */
+export type FileBurstStoreOptions = {
+  logger: Logger
+  /** The file, under the extension's `globalStorageUri` - shared by every window */
+  path: string
 }
 
 /** Arguments to {@link createBurstGuard} */
@@ -69,11 +78,72 @@ export const DRIFT_BURST: BurstGuardOptions = { limit: 5, suspendMs: 60 * 60_000
 export function createMemoryBurstStore(): BurstStore {
   let state: BurstState | undefined
   return {
-    get: () => state,
+    async get() {
+      return state
+    },
     async set(value) {
       state = value
     },
   }
+}
+
+/**
+ * A {@link BurstStore} in a file the windows share.  It is read and written only by passes that hold the settings lock
+ * (`settingsLock.ts`), so each window reads the count the last one left.  `ExtensionContext.globalState` can't do
+ * this: another window sees a change to it seconds later, and a window that writes back its own stale copy wipes out
+ * a suspension the other window has just made.
+ *
+ * A missing or unreadable file reads as no restores.  A failed write is logged, and costs at most a restore the guard
+ * doesn't count.
+ *
+ * @param options  The file, and where to log a failure.
+ * @returns The store.
+ */
+export function createFileBurstStore({ logger, path }: FileBurstStoreOptions): BurstStore {
+  return {
+    async get() {
+      try {
+        const state: unknown = JSON.parse(await readFile(path, 'utf8'))
+        if (isBurstState(state)) return state
+        logger.warn(`Drift guard: ${path} holds no restore count, so the count starts again (ignored)`)
+      } catch (error: unknown) {
+        if (!hasCode(error, 'ENOENT'))
+          logger.warn(`Drift guard: could not read ${path} - ${describeError(error)} (ignored)`)
+      }
+      return undefined
+    },
+    async set(state) {
+      // Written aside and renamed into place, so an extension host stopped part way leaves the last whole count
+      const next = `${path}.${process.pid}.tmp`
+      try {
+        await mkdir(dirname(path), { recursive: true })
+        await writeFile(next, JSON.stringify(state))
+        await rename(next, path)
+      } catch (error: unknown) {
+        logger.warn(`Drift guard: could not save the restore count - ${describeError(error)} (ignored)`)
+      }
+    },
+  }
+}
+
+function isBurstState(value: unknown): value is BurstState {
+  if (typeof value !== 'object' || value === null) return false
+  const { restores, suspendedUntil } = value as Partial<Record<keyof BurstState, unknown>>
+  return (
+    isRecordOf(restores, times => Array.isArray(times) && times.every(isNumber)) && isRecordOf(suspendedUntil, isNumber)
+  )
+}
+
+function isRecordOf(value: unknown, isEntry: (entry: unknown) => boolean): boolean {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) && Object.values(value).every(isEntry)
+}
+
+function isNumber(value: unknown): value is number {
+  return typeof value === 'number'
+}
+
+function hasCode(error: unknown, code: string): boolean {
+  return typeof error === 'object' && error !== null && (error as { code?: unknown }).code === code
 }
 
 /**
@@ -96,7 +166,7 @@ export function createBurstGuard({
 }: BurstGuardOptions): BurstGuard {
   return {
     async check(key, now) {
-      const state = store.get() ?? { restores: {}, suspendedUntil: {} }
+      const state = (await store.get()) ?? { restores: {}, suspendedUntil: {} }
       const until = state.suspendedUntil[key]
       if (until !== undefined && now < until) return 'suspended'
       const recent = (state.restores[key] ?? []).filter(at => now - at < windowMs)
