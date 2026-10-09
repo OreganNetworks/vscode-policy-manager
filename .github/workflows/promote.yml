@@ -53,9 +53,9 @@ jobs:
             echo "::error::$tag is $state, which can't be Latest"
             exit 1
           fi
-          # The two files the updater downloads
+          # The two files the updater downloads, and the install scripts the README points at
           assets=$(gh release view "$tag" --json assets --jq '.assets[].name')
-          for name in manifest.json "oregan-policy-manager-$VERSION.vsix"; do
+          for name in manifest.json "oregan-policy-manager-$VERSION.vsix" install.sh install.ps1; do
             if ! grep -qxF "$name" <<< "$assets"; then
               echo "::error::$tag has no $name"
               exit 1

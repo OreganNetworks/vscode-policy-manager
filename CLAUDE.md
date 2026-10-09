@@ -60,8 +60,9 @@ F5 in VS Code runs the extension in an isolated profile under `.vscode-test/` -
 never point it at your own profile, it will apply the policy there. The **Try
 extension (clean editor)** task does the same for the packaged VSIX, in a
 throwaway editor under `.vscode-test/try/`; **Add extension** installs it into
-the Default profile of your own editor, never with `--profile`: a profile with
-a copy of its own keeps it when stable is rolled back.
+the Default profile of your own editor with the install script, never with
+`--profile`: a profile with a copy of its own keeps it when stable is rolled
+back.
 
 ## Layout
 
@@ -85,14 +86,17 @@ src/
     releaseManifest.test.ts  # release script output against what the updater accepts
   notices.ts      # notifications saved across an extension host restart
   settingsLock.ts # one window at a time writes user settings
+  setupWindow.ts  # the window an install opens for the extension to apply itself to all profiles, closed again
   lock.ts         # lock files in the global storage, for the update check and the settings lock
   logger.ts       # Logger port, describeError
   links.ts        # policy and IDE Configuration URLs
   testing/        # spec helpers, excluded from the build
-test/integration/ # @vscode/test-electron suite; profiles/ runs the packaged VSIX in a named profile
+test/integration/ # @vscode/test-electron suite; profiles/ runs the packaged VSIX in a named profile, then the install script
 test/fixtures/    # fake managed extensions the suite installs, and the host for the profiles suite
 scripts/write-manifest.mjs
-scripts/add-extension.mjs      # the Add extension and Try extension tasks
+scripts/install.sh             # the install script developers run on macOS and Linux, published with each release
+scripts/install.ps1            # the same, on Windows
+scripts/add-extension.mjs      # the Add extension task (through the install script) and Try extension
 .github/workflows/ci.yml       # every PR: lint, format, typecheck, build, test, package, integration
 .github/workflows/release.yml  # v* tags: test, package, publish the VSIX and manifest.json as Latest (stable)
 .github/workflows/promote.yml  # Promote to stable: mark an earlier (or later) release Latest, behind reviewers
@@ -162,7 +166,9 @@ These are the ones that are easy to get wrong:
     `extensions.json` in the extensions folder first, and never run it when that
     already reads as applied. It can be too early when the extension activates
     (1.139 may not have registered it yet, 1.90 ignores it until its extension
-    list is loaded), hence the retries.
+    list is loaded), hence the retries. A fresh install is in the Default
+    profile only, so the install scripts open a Default window on the setup
+    file, and `setupWindow.ts` closes it once the extension has applied itself.
 15. **Switching the AI off restarts the extension host.** While Copilot Chat
     runs, writing `chat.disableAIFeatures: true` makes VS Code restart the
     extension host in the same moment, so a notification sent after the write

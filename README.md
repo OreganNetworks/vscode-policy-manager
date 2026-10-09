@@ -25,47 +25,68 @@ NDA commitments and the
 
 ## Install
 
-Download `oregan-policy-manager-<version>.vsix` from the
-[latest release](https://github.com/OreganNetworks/vscode-policy-manager/releases/latest)
-and install it with the host editor's CLI:
+On macOS or Linux:
+
+```sh
+curl -fsSL https://github.com/OreganNetworks/vscode-policy-manager/releases/latest/download/install.sh | sh
+```
+
+On Windows, in PowerShell:
+
+```powershell
+irm https://github.com/OreganNetworks/vscode-policy-manager/releases/latest/download/install.ps1 | iex
+```
+
+The script installs the extension into every VS Code, VS Code Insiders,
+VSCodium, Cursor and Windsurf it finds:
+
+1. It removes the copies a later install can't replace: one under the old ID
+   `oregan.oregan-policy-manager`, and one that a named
+   [profile](https://code.visualstudio.com/docs/configure/profiles) has of its
+   own, which an update would never reach.
+2. It downloads the stable release, checks it against the SHA-256 in its
+   `manifest.json`, and installs it into the Default profile.
+3. Unless that copy is already applied to all profiles, it opens a window with
+   the Default profile on a short setup file. The extension applies itself to
+   all profiles there (**Apply Extension to all Profiles**), so that every
+   window runs it whatever its profile, then closes the window again. The script
+   waits for that, for up to 90 seconds.
+
+Run **Developer: Reload Window** in windows that were already open. Once
+installed, the extension is listed under **Installed** in the Extensions view as
+**Oregan Policy Manager** (`oregannetworks.oregan-policy-manager`), and it logs
+to the **Oregan Policy Manager** channel in the Output panel. It is not on the
+Marketplace or Open VSX, so searching there won't find it.
+
+To install a VSIX you have, or into one editor only, run the script from a file:
+`sh install.sh --vsix <file> --cli codium` on macOS or Linux, and
+`.\install.ps1 -Vsix <file> -Cli codium.cmd` on Windows. The script opens the
+Default profile by its English name, so in an editor with another display
+language, open a window with the default profile yourself.
+
+To install by hand instead:
 
 ```sh
 code --install-extension oregan-policy-manager-<version>.vsix
-```
-
-Swap `code` for `codium`, `cursor` or `windsurf` as appropriate. It is not on
-the Marketplace or Open VSX, so searching there won't find it. Once installed,
-it is listed under **Installed** in the Extensions view as **Oregan Policy
-Manager** (`oregannetworks.oregan-policy-manager`), and it logs to the
-**Oregan Policy Manager** channel in the Output panel. If the window was
-already open, run **Developer: Reload Window**.
-
-The CLI in VS Code 1.140 and later prints a `DeprecationWarning` about
-`url.parse()` during every install. It comes from VS Code's own code, not this
-extension, and is harmless; `NODE_OPTIONS=--no-deprecation` hides it.
-
-The CLI installs into the Default profile. The first time the extension runs,
-it applies itself to all profiles (**Apply Extension to all Profiles**), so
-from then on every window runs it, whatever its
-[profile](https://code.visualstudio.com/docs/configure/profiles). If your
-windows use another profile, it can't run until a window with the Default
-profile opens, so open one once:
-
-```sh
 code --profile Default --new-window
 ```
 
-Close it once the **Oregan Policy Manager** output says it is applied to all
-profiles, then run **Developer: Reload Window** in your other windows. Don't
-install it with `--profile "<name>"` instead: that profile then keeps a copy of
-its own, which updates never replace, so rolling stable back to an older
-version would not reach it. Uninstalling it, with
-`code --uninstall-extension oregannetworks.oregan-policy-manager`, removes it
-from every profile.
+The second command opens a window with the Default profile, where the extension
+applies itself to all profiles; close it once the **Oregan Policy Manager**
+output says so. Don't install with `--profile "<name>"`: that profile then keeps
+a copy of its own, which updates never replace, so rolling stable back to an
+older version would not reach it. Uninstalling, with
+`code --uninstall-extension oregannetworks.oregan-policy-manager`, removes the
+extension from every profile.
+
+The CLI in VS Code 1.140 and later prints a `DeprecationWarning` about
+`url.parse()` during every install. It comes from VS Code's own code, not this
+extension, and is harmless; `NODE_OPTIONS=--no-deprecation` hides it. The
+install script hides it.
 
 The extension then keeps itself on the stable release (see
 [Versions and updates](#versions-and-updates)). The release repository has to
-be public for that check to work.
+be public for that check, and for the install script URLs above, to work.
 
 ## What it does
 
@@ -184,8 +205,9 @@ buttons when the recommended `actboy168.tasks` extension is installed.
 
 Every pull request runs the `CI` workflow: lint, format, type-check, build,
 unit tests, the integration suite on VS Code 1.90.0 and stable, on Linux, macOS
-and Windows (including the packaged VSIX installed into a named profile), and a
-package check that the VSIX holds only the extension. The VSIX is attached to the run
+and Windows (including the packaged VSIX installed into a named profile, and
+the install script), and a package check that the VSIX holds only the
+extension. The VSIX is attached to the run
 as the `vsix` artifact.
 
 Nobody pushes to `main` directly. A pull request merges once those jobs pass
@@ -202,7 +224,7 @@ settings and extensions. Three ways to run it, from the most isolated:
 |---|---|---|
 | F5 (**Run Extension (isolated profile)**) | The source, in an Extension Development Host | `.vscode-test/dev-user-data` and `.vscode-test/dev-extensions` |
 | **Try extension (clean editor)** task | The packaged VSIX, in a separate editor that it opens | `.vscode-test/try/` - delete it to start afresh |
-| **Add extension** task | The packaged VSIX, in your own editor | The Default profile, applied to all profiles: it opens a Default window when the extension still has to apply itself |
+| **Add extension** task | The packaged VSIX, in your own editor, through the install script | The Default profile, applied to all profiles: the setup window opens, and closes again, when the extension still has to apply itself |
 
 The two tasks package the VSIX first, then run `scripts/add-extension.mjs`.
 Any separate editor works the same way: `code --user-data-dir <dir>
@@ -215,7 +237,8 @@ To release, bump `version` in `package.json` and merge that to `main`, then push
 a matching tag on the merged commit (`v0.1.1`). Only the repository admins can
 push, move or delete a `v*` tag, and the `Release` workflow refuses a tag on a
 commit that isn't on `main`. It tests, packages and publishes the VSIX with its
-`manifest.json`, and marks the release Latest, so it is stable straight away.
+`manifest.json` and the two install scripts, and marks the release Latest, so it
+is stable straight away.
 
 To roll stable back, or forward again, run **Promote to stable** with the
 version stable should be:
@@ -269,11 +292,12 @@ only. Once it is signed off:
      -f approval_policy=all_external_contributors
    ```
 
-4. Once there is a release, check that the update check can read the stable
-   release without signing in:
+4. Once there is a release, check that the update check and the install
+   script can read the stable release without signing in:
 
    ```sh
    curl -fsSL https://github.com/OreganNetworks/vscode-policy-manager/releases/latest/download/manifest.json
+   curl -fsSLI https://github.com/OreganNetworks/vscode-policy-manager/releases/latest/download/install.sh
    ```
 
 ## What it is not

@@ -19,6 +19,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
+      # The install script runs under the sh of macOS and Linux, so no bash in it
+      - run: shellcheck -s sh scripts/install.sh
 
   format:
     name: Format

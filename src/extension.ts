@@ -4,6 +4,7 @@ import * as vscode from 'vscode'
 import {
   applyToAllProfiles,
   type ApplyToAllProfilesOptions,
+  type ProfileScopeOutcome,
   readAppliedToAllProfiles,
 } from './policy/applyToAllProfiles'
 import { IGNORED_EXTENSIONS_KEY, IGNORED_SETTINGS_KEY, keepOutOfSync } from './policy/keepOutOfSync'
@@ -36,6 +37,7 @@ import {
 } from './policy/settings'
 import { CLAUDE_CODE_ID, claudeCodeMessage } from './policy/recommendClaudeCode'
 import { createSettingsLock } from './settingsLock'
+import { isSetupWindow } from './setupWindow'
 import { collectStatusSnapshot, formatStatusReport } from './status'
 import {
   createUpdater,
@@ -145,13 +147,19 @@ export function activate(context: vscode.ExtensionContext): void {
   /* Activation does no I/O itself: start-up and the first update check begin once activate() has returned */
   let schedule: { dispose(): void } | undefined
   const deferred = setImmediate(function startAfterActivation() {
-    detach(log, 'Start-up', startUp())
+    const startedUp = startUp()
+    detach(log, 'Start-up', startedUp)
     /*
      * The Extension Development Host and the integration suite run code that isn't a release, and isn't installed:
      * there is no release to follow and no install to apply to every profile.
      */
     if (context.extensionMode === vscode.ExtensionMode.Production) {
-      detach(log, 'All profiles', applyToAllProfiles(createProfileScope(context, log)))
+      const applied = applyToAllProfiles(createProfileScope(context, log))
+      detach(
+        log,
+        'Setup window',
+        applied.then(outcome => closeIfSetupWindow(outcome, startedUp, log)),
+      )
       schedule = scheduleChecks({ check: () => updater.check(), logger: log })
     } else {
       log.info('Update checks are off outside a release install - Oregan: Check for Updates still runs one')
@@ -187,6 +195,25 @@ export function activate(context: vscode.ExtensionContext): void {
     if (switchedOff.length) notices.show(AI_SWITCHED_OFF)
     else if (switchingOff) await notices.forget(AI_SWITCHED_OFF)
   }
+}
+
+/**
+ * Closes the window an install opened only for the extension to apply itself to all profiles (see `setupWindow.ts`),
+ * once it has, and once start-up has written the policy, so no write is cut short.  A window where it could not apply
+ * itself stays open, with the setup file saying where to look.
+ */
+async function closeIfSetupWindow(
+  outcome: ProfileScopeOutcome,
+  startedUp: Promise<void>,
+  log: vscode.LogOutputChannel,
+): Promise<void> {
+  if (outcome !== 'applied' && outcome !== 'already') return
+  const documents = vscode.workspace.textDocuments.filter(document => document.uri.scheme === 'file')
+  const folderCount = vscode.workspace.workspaceFolders?.length ?? 0
+  if (!isSetupWindow({ documents: documents.map(document => document.uri.fsPath), folderCount })) return
+  await startedUp.catch(() => undefined)
+  log.info('Setup window: applied to all profiles, so the window the install opened closes again')
+  await vscode.commands.executeCommand('workbench.action.closeWindow')
 }
 
 /** Everything, including the update timer, is disposed through `context.subscriptions` */

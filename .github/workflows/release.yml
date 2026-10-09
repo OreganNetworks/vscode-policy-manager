@@ -52,9 +52,12 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: release
+          # The install scripts too, so releases/latest/download/install.sh is the script for the stable release
           path: |
             oregan-policy-manager-*.vsix
             manifest.json
+            scripts/install.sh
+            scripts/install.ps1
           if-no-files-found: error
           retention-days: 7
 
@@ -73,4 +76,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" "oregan-policy-manager-${GITHUB_REF_NAME#v}.vsix" manifest.json \
-            --title "$GITHUB_REF_NAME" --generate-notes --latest
+            scripts/install.sh scripts/install.ps1 --title "$GITHUB_REF_NAME" --generate-notes --latest
