@@ -25,7 +25,7 @@ export type ManagedSetting = {
 
 /**
  * Keys and values match the IDE Configuration page.  `chat.disableAIFeatures` is the master switch for the editor's
- * built-in AI (and the only thing that turns off the built-in Copilot Chat in VS Code 1.138+); `github.copilot.enable`
+ * built-in AI (and the only thing that turns off the built-in Copilot Chat in VS Code 1.116+); `github.copilot.enable`
  * covers editors that predate it.  Neither affects Claude Code, which sits outside the built-in AI surface.
  */
 export const MANAGED_SETTINGS: readonly ManagedSetting[] = [

@@ -112,11 +112,12 @@ write stays in its window as unsaved changes to `settings.json`, which turn up
 later as a save conflict. The policy is written once, in whichever window takes
 the lock first; the others find it in place.
 
-VS Code 1.138 and later ship GitHub Copilot Chat (`GitHub.copilot-chat`) as a
+VS Code 1.116 and later ship GitHub Copilot Chat (`GitHub.copilot-chat`) as a
 built-in extension, which can't be uninstalled, and nor can a newer copy of it
 from the Marketplace. The extension leaves either in place and relies on
 `chat.disableAIFeatures` to switch it off; once it is off, the editor may hide
-it, so the status report can show it as not installed or disabled.
+it, so the status report can show it as not installed or disabled. Uninstalling
+Copilot Chat only applies before 1.116, and in forks that don't ship it.
 
 Managed extensions, removed in this order so that `github.copilot-chat` has no
 dependants left when it goes:

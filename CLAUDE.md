@@ -155,7 +155,7 @@ These are the ones that are easy to get wrong:
     when something changes, and the drift message at most once per session.
 12. **Cheap activation.** `onStartupFinished`, under 50 ms of work before
     yielding, all network calls async.
-13. **Built-in Copilot Chat.** VS Code 1.138+ ships `GitHub.copilot-chat` built
+13. **Built-in Copilot Chat.** VS Code 1.116+ ships `GitHub.copilot-chat` built
     in, and the uninstall command refuses built-ins. The remover skips it and
     `chat.disableAIFeatures` is what switches it off - keep that setting in the
     table.
