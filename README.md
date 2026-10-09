@@ -113,7 +113,9 @@ user settings, under a lock that the windows share. Windows that wrote
 `settings.json` together would refuse each other's writes, and each refused
 write stays in its window as unsaved changes to `settings.json`, which turn up
 later as a save conflict. The policy is written once, in whichever window takes
-the lock first; the others find it in place.
+the lock first; the others find it in place. The lock holds the process ID of
+the extension host that took it, so when restoring an AI setting restarts that
+host part way through, the next one takes the lock over at once.
 
 VS Code 1.116 and later ship GitHub Copilot Chat (`GitHub.copilot-chat`) as a
 built-in extension, which can't be uninstalled, and nor can a newer copy of it

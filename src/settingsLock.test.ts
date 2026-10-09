@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import { stat, utimes, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { after, describe, it } from 'node:test'
@@ -106,6 +107,17 @@ describe('createSettingsLock', () => {
     await writeFile(path, '')
     const old = (Date.now() - 60_000) / 1000
     await utimes(path, old, old)
+    const started = Date.now()
+    await lock.run('takeover', async () => undefined)
+    assert.ok(Date.now() - started < 500)
+  })
+
+  it('takes over at once a lock whose extension host has gone, as after an AI restore restarts it', async () => {
+    const path = await lockPath()
+    const { lock } = windowLock(path)
+    await windowLock(path).lock.run('setup', async () => undefined) // makes the folder
+    const { pid } = spawnSync(process.execPath, ['-e', ''])
+    await writeFile(path, String(pid))
     const started = Date.now()
     await lock.run('takeover', async () => undefined)
     assert.ok(Date.now() - started < 500)

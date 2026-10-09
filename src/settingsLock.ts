@@ -9,6 +9,10 @@
  * once the extension is applied to all profiles.  A pass reads the settings again once it holds the lock, so a window
  * that waited finds the work done and writes nothing.  A pass that wrote holds the lock a little longer, for the other
  * windows to reload `settings.json` before they read it.
+ *
+ * The lock holds the process ID of the extension host that took it.  Restoring an AI setting restarts the extension
+ * host, which stops it in the middle of its pass with the lock still taken; the next host, and every other window,
+ * takes over the lock of a process that has gone at once, rather than when it is `staleMs` old.
  */
 import { rm, stat } from 'node:fs/promises'
 import { tryAcquireCycleLock } from './lock'
@@ -24,7 +28,10 @@ export type SettingsLockOptions = {
   pollMs?: number
   /** How long a pass that wrote keeps the lock, for the other windows to reload `settings.json` */
   settleMs?: number
-  /** A lock older than this was left by a window that went away during a pass, and is taken over */
+  /**
+   * A lock older than this was left by a window that went away during a pass, and is taken over.  This is for when the
+   * process ID in it can't tell, as when the system has given that ID to a new process.
+   */
   staleMs?: number
   /** How long a window waits for the lock before it runs its pass without it */
   timeoutMs?: number
@@ -85,7 +92,7 @@ export function createSettingsLock({
     for (;;) {
       const now = Date.now()
       try {
-        if (await tryAcquireCycleLock({ now, path, ttlMs: staleMs })) {
+        if (await tryAcquireCycleLock({ now, path, pid: process.pid, ttlMs: staleMs })) {
           heldStamp = now
           return true
         }
