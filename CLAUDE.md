@@ -20,12 +20,12 @@ description.
 ## Source of truth
 
 The design is not in this repo. It lives in two attachments on TMP-7075. A
-re-upload carries a date prefix (`2026-10-08b_...`), so read the newest of each:
+re-upload carries a date prefix (`2026-10-09_...`), so read the newest of each:
 
-- `oregan-vscode-extension-spec.md` - Draft v0.8: the functional requirements,
+- `oregan-vscode-extension-spec.md` - Draft v0.9: the functional requirements,
   manifest essentials and code layout; section 9 lists the changes since v0.6
 - `oregan-vscode-extension-implementation-plan.md` - the task-by-task
-  implementation plan, with the work since the first review as Tasks 12 to 21
+  implementation plan, with the work since the first review as Tasks 12 to 28
 
 Read both before implementing anything. Fetch them through the Atlassian MCP:
 `getJiraIssue` with `fields: ["attachment"]` for the attachment ids, then
@@ -209,8 +209,11 @@ been answered before building on an assumption:
    environment exists, limited to `main`, but on the GitHub Team plan required
    reviewers wait for the repository to be public, and the workflow refuses to
    run until it has them. README **Going public** has the steps.
-7. Rollout: each developer installs the extension by hand and can uninstall
-   it. Will IT push the install, for example with an MDM script?
+7. Rollout: each developer installs the extension by hand, with the install
+   script, and can uninstall it. Will IT push the install, for example by
+   running the script through MDM?
+8. Answered: no setting to opt a profile out. **Disable** on the extension
+   already does it, as the editor keeps the disabled list per profile.
 
 ## Repo conventions
 
