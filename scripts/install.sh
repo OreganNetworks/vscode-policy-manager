@@ -12,7 +12,8 @@
 # Options, after `sh -s --` when the script is piped:
 #   --vsix <file>  install this VSIX rather than the stable release
 #   --cli <path>   only the editor with this CLI, e.g. --cli codium
-# OPM_USER_DATA_DIR and OPM_EXTENSIONS_DIR point the editor given with --cli at other folders (the integration suite).
+# For the integration suite: OPM_USER_DATA_DIR and OPM_EXTENSIONS_DIR point the editor given with --cli at other
+# folders, and OPM_WINDOW_ARGS adds flags to the window the script opens, such as --no-sandbox on a CI runner.
 set -eu
 
 RELEASE_URL=${OPM_RELEASE_URL:-https://github.com/OreganNetworks/vscode-policy-manager/releases/latest/download}
@@ -190,7 +191,8 @@ If it is still open after a minute, open View > Output, pick Oregan Policy
 Manager, and see what it says there.
 EOF
   # "Default" is the name of the default profile in an editor whose display language is English
-  if ! run_cli --profile Default --new-window "$setup" >/dev/null 2>&1; then
+  # shellcheck disable=SC2086 # OPM_WINDOW_ARGS is a list of flags
+  if ! run_cli ${OPM_WINDOW_ARGS:-} --profile Default --new-window "$setup" >/dev/null 2>&1; then
     say "  could not open a window: open one with the Default profile, and the extension applies itself to all profiles"
     return
   fi

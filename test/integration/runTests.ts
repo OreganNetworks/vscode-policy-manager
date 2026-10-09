@@ -159,7 +159,40 @@ async function runInstallerSuite({
   run(cli, [...baseArgs, ...profileArgs, '--install-extension', oldIdVsix])
   run(cli, [...baseArgs, ...profileArgs, '--profile', PROFILE, '--install-extension', vsix])
 
-  const env = { ...process.env, OPM_EXTENSIONS_DIR: extensionsDir, OPM_USER_DATA_DIR: userDataDir }
+  const env = {
+    ...process.env,
+    OPM_EXTENSIONS_DIR: extensionsDir,
+    OPM_USER_DATA_DIR: userDataDir,
+    // What runTests passes its own windows: a Linux CI runner can't start the editor in its sandbox
+    OPM_WINDOW_ARGS: '--no-sandbox --disable-gpu-sandbox --skip-welcome --skip-release-notes --disable-updates',
+  }
+  try {
+    await runInstaller({ cli, env, nextVersion, nextVsix, extensionsDir, userDataDir })
+  } catch (error: unknown) {
+    printEditorLogs(userDataDir)
+    throw error
+  }
+}
+
+/** Arguments to {@link runInstaller} */
+type RunInstallerOptions = {
+  cli: string
+  env: NodeJS.ProcessEnv
+  extensionsDir: string
+  nextVersion: string
+  nextVsix: string
+  userDataDir: string
+}
+
+/** Runs the install script, then checks what it left */
+async function runInstaller({
+  cli,
+  env,
+  extensionsDir,
+  nextVersion,
+  nextVsix,
+  userDataDir,
+}: RunInstallerOptions): Promise<void> {
   if (process.platform === 'win32') {
     const script = join(ROOT, 'scripts', 'install.ps1')
     run(
@@ -181,6 +214,17 @@ async function runInstallerSuite({
   if (listsExtension(namedProfileList(userDataDir, PROFILE), EXTENSION_ID))
     throw new Error(`the ${PROFILE} profile still has a copy of its own`)
   await waitForSetupWindowToClose(userDataDir)
+}
+
+/** The main log and the extension logs of an editor, for a failure to show what the setup window did */
+function printEditorLogs(userDataDir: string): void {
+  const logs = join(userDataDir, 'logs')
+  if (!existsSync(logs)) return
+  for (const path of readdirSync(logs, { encoding: 'utf8', recursive: true })) {
+    if (!/(^|[\\/])(main|exthost|Oregan Policy Manager)\.log$/.test(path)) continue
+    // eslint-disable-next-line no-console -- the runner reports straight to the terminal
+    console.log(`==> ${path}\n${readFileSync(join(logs, path), 'utf8').split('\n').slice(-80).join('\n')}`)
+  }
 }
 
 /** Whether an `extensions.json` lists an extension */

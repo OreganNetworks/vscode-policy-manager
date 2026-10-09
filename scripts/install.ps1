@@ -12,7 +12,8 @@
 # Options, when the script is run as a file:
 #   -Vsix <file>  install this VSIX rather than the stable release
 #   -Cli <path>   only the editor with this CLI, e.g. -Cli codium.cmd
-# OPM_USER_DATA_DIR and OPM_EXTENSIONS_DIR point the editor given with -Cli at other folders (the integration suite).
+# For the integration suite: OPM_USER_DATA_DIR and OPM_EXTENSIONS_DIR point the editor given with -Cli at other
+# folders, and OPM_WINDOW_ARGS adds flags to the window the script opens.
 param(
   [string]$Vsix = '',
   [string]$Cli = ''
@@ -142,7 +143,8 @@ try {
     )
     try {
       # "Default" is the name of the default profile in an editor whose display language is English
-      Invoke-Cli $cli @('--profile', 'Default', '--new-window', $setup)
+      $windowArgs = if ($env:OPM_WINDOW_ARGS) { @($env:OPM_WINDOW_ARGS -split ' ') } else { @() }
+      Invoke-Cli $cli ($windowArgs + @('--profile', 'Default', '--new-window', $setup))
     } catch {
       Write-Host '  could not open a window: open one with the Default profile, and the extension applies itself to all profiles'
       return
