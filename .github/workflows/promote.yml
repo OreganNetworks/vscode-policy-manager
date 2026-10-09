@@ -1,0 +1,79 @@
+name: Promote to stable
+
+# Marks a published release Latest, which is the stable release every installed copy follows within the hour, older
+# or newer than the copy it finds.  A v* tag makes its own release stable, so this is for rolling stable back to an
+# earlier release, and forward again.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Published version stable should be, e.g. 0.1.0
+        required: true
+
+permissions:
+  # Reading the environment's protection rules, in the first step
+  actions: read
+  contents: write
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    # Required reviewers, and deployments from main only - set up under Settings > Environments
+    environment: release
+    steps:
+      # GitHub creates an environment a job names the first time it runs, with no protection rules, so a run before
+      # release is set up would move stable with no reviewer.  This stops it.
+      - name: Check the release environment has required reviewers
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          reviewers=$(gh api "repos/$GH_REPO/environments/release" \
+            --jq '[.protection_rules[]? | select(.type == "required_reviewers") | .reviewers[]?] | length')
+          if [ "$reviewers" -lt 1 ]; then
+            echo "::error::The release environment has no required reviewers - set them under Settings > Environments"
+            exit 1
+          fi
+      - name: Move stable
+        # bash -eo pipefail: any gh call that fails stops the step before the tag moves
+        shell: bash
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::'$VERSION' is not a version such as 0.1.0"
+            exit 1
+          fi
+          tag="v$VERSION"
+          state=$(gh release view "$tag" --json isDraft,isPrerelease \
+            --jq 'if .isDraft then "a draft" elif .isPrerelease then "a pre-release" else "" end')
+          if [ -n "$state" ]; then
+            echo "::error::$tag is $state, which can't be Latest"
+            exit 1
+          fi
+          # The two files the updater downloads, and the install scripts the README points at
+          assets=$(gh release view "$tag" --json assets --jq '.assets[].name')
+          for name in manifest.json "oregan-policy-manager-$VERSION.vsix" install.sh install.ps1; do
+            if ! grep -qxF "$name" <<< "$assets"; then
+              echo "::error::$tag has no $name"
+              exit 1
+            fi
+          done
+          previous=$(gh release view --json tagName --jq .tagName)
+          if [ "$previous" = "$tag" ]; then
+            echo "\`stable\` is already $tag; nothing moved." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          gh release edit "$tag" --latest
+          now=$(gh release view --json tagName --jq .tagName)
+          if [ "$now" != "$tag" ]; then
+            echo "::error::Latest is $now after the edit, not $tag"
+            exit 1
+          fi
+          {
+            echo "\`stable\`: $previous -> $tag"
+            echo
+            echo "To undo: \`gh workflow run promote.yml -f version=${previous#v}\`"
+          } | tee -a "$GITHUB_STEP_SUMMARY"

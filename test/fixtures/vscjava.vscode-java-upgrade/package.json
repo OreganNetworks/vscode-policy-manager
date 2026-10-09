@@ -1,0 +1,7 @@
+{
+  "name": "vscode-java-upgrade",
+  "displayName": "Fake Java Upgrade (test fixture)",
+  "publisher": "vscjava",
+  "version": "0.0.1",
+  "engines": { "vscode": "^1.90.0" }
+}

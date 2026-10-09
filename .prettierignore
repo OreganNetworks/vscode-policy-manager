@@ -1,0 +1,7 @@
+out
+node_modules
+.vscode-test
+pnpm-lock.yaml
+*.vsix
+# Docs/markdown are hand-authored (aligned tables); keep Prettier off them.
+*.md

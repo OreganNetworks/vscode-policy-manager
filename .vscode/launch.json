@@ -1,0 +1,18 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run Extension (isolated profile)",
+      "type": "extensionHost",
+      "request": "launch",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        // Keep the policy away from your own settings and extensions
+        "--user-data-dir=${workspaceFolder}/.vscode-test/dev-user-data",
+        "--extensions-dir=${workspaceFolder}/.vscode-test/dev-extensions"
+      ],
+      "outFiles": ["${workspaceFolder}/out/**/*.js"],
+      "preLaunchTask": "build"
+    }
+  ]
+}

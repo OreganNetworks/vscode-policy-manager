@@ -1,0 +1,8 @@
+{
+  "name": "vscode-dotnet-modernize",
+  "displayName": "Fake .NET Modernize (test fixture)",
+  "publisher": "ms-dotnettools",
+  "version": "0.0.1",
+  "engines": { "vscode": "^1.90.0" },
+  "extensionDependencies": ["vscjava.vscode-java-upgrade"]
+}

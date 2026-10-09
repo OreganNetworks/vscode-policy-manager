@@ -1,0 +1,5 @@
+{
+  // Extensions recommended for working on this repository (a TypeScript VS Code extension, tests on node:test and
+  // @vscode/test-electron). actboy168.tasks provides the status-bar buttons defined in tasks.json.
+  "recommendations": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode", "actboy168.tasks"]
+}
