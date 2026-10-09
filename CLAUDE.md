@@ -20,12 +20,12 @@ description.
 ## Source of truth
 
 The design is not in this repo. It lives in two attachments on TMP-7075. A
-re-upload carries a date prefix (`2026-10-09b_...`), so read the newest of each:
+re-upload carries a date prefix (`2026-10-09c_...`), so read the newest of each:
 
-- `oregan-vscode-extension-spec.md` - Draft v0.10: the functional requirements,
+- `oregan-vscode-extension-spec.md` - Draft v0.11: the functional requirements,
   manifest essentials and code layout; section 9 lists the changes since v0.6
 - `oregan-vscode-extension-implementation-plan.md` - the task-by-task
-  implementation plan, with the work since the first review as Tasks 12 to 30
+  implementation plan, with the work since the first review as Tasks 12 to 32
 
 Read both before implementing anything. Fetch them through the Atlassian MCP:
 `getJiraIssue` with `fields: ["attachment"]` for the attachment ids, then
