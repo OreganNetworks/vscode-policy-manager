@@ -220,7 +220,9 @@ as the `vsix` artifact.
 Nobody pushes to `main` directly. A pull request merges once those jobs pass
 and a code owner approves its latest push: a member of the ONYX team, or one of
 the repository admins outside it (`.github/CODEOWNERS`). Only ONYX and the
-repository admins can merge it.
+repository admins can merge it: the branch protection rule on `main` lets only
+the ONYX team push to it, which merging is, and admins are exempt from it.
+Anyone else with write access can review a pull request, but not merge it.
 
 ### Running it
 
