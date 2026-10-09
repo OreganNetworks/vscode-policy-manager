@@ -12,8 +12,9 @@
 # Options, when the script is run as a file:
 #   -Vsix <file>  install this VSIX rather than the stable release
 #   -Cli <path>   only the editor with this CLI, e.g. -Cli codium.cmd
-# For the integration suite: OPM_USER_DATA_DIR and OPM_EXTENSIONS_DIR point the editor given with -Cli at other
-# folders, and OPM_WINDOW_ARGS adds flags to the window the script opens.
+# OPM_USER_DATA_DIR and OPM_EXTENSIONS_DIR point the editor given with -Cli at other folders, as the integration suite
+# does, and are needed for a CLI the script doesn't know by name.  OPM_WINDOW_ARGS adds flags to the window the script
+# opens.
 
 # irm | iex runs this in the session of the developer, so the body is a script block of its own: the preference,
 # functions and variables it sets stay inside it.  The options come from $args, not a param block, which under iex
@@ -177,8 +178,11 @@
       $command = Get-Command $Cli -ErrorAction SilentlyContinue
       if (-not $command) { throw "no editor CLI at $Cli" }
       $name = [IO.Path]::GetFileNameWithoutExtension($command.Source)
+      # The folders of the editor the CLI is named after: another name would read folders the CLI doesn't install into
       $editor = ($editors | Where-Object { $_.Cli -eq $name } | Select-Object -First 1)
-      if (-not $editor) { $editor = $editors[0] }
+      if (-not $editor -and -not ($env:OPM_USER_DATA_DIR -and $env:OPM_EXTENSIONS_DIR)) {
+        throw "$name is not the CLI of VS Code, VS Code Insiders, VSCodium, Cursor or Windsurf: set OPM_USER_DATA_DIR and OPM_EXTENSIONS_DIR to the folders of its editor"
+      }
       $dataDir = if ($env:OPM_USER_DATA_DIR) { $env:OPM_USER_DATA_DIR } else { Join-Path $env:APPDATA $editor.Data }
       $extensionsDir = if ($env:OPM_EXTENSIONS_DIR) { $env:OPM_EXTENSIONS_DIR } else {
         Join-Path $env:USERPROFILE "$($editor.Extensions)\extensions"

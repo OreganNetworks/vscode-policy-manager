@@ -12,8 +12,9 @@
 # Options, after `sh -s --` when the script is piped:
 #   --vsix <file>  install this VSIX rather than the stable release
 #   --cli <path>   only the editor with this CLI, e.g. --cli codium
-# For the integration suite: OPM_USER_DATA_DIR and OPM_EXTENSIONS_DIR point the editor given with --cli at other
-# folders, and OPM_WINDOW_ARGS adds flags to the window the script opens, such as --no-sandbox on a CI runner.
+# OPM_USER_DATA_DIR and OPM_EXTENSIONS_DIR point the editor given with --cli at other folders, as the integration suite
+# does, and are needed for a CLI the script doesn't know by name.  OPM_WINDOW_ARGS adds flags to the window the script
+# opens, such as --no-sandbox on a CI runner.
 set -eu
 
 RELEASE_URL=${OPM_RELEASE_URL:-https://github.com/OreganNetworks/vscode-policy-manager/releases/latest/download}
@@ -212,7 +213,11 @@ found=0
 if [ -n "$only_cli" ]; then
   cli_path=$(command -v "$only_cli" || true)
   [ -n "$cli_path" ] || fail "no editor CLI at $only_cli"
-  match=$(editors | grep "^$(basename "$only_cli" .cmd)|" || editors | head -n 1)
+  # The folders of the editor the CLI is named after: another name would read folders the CLI doesn't install into
+  match=$(editors | grep "^$(basename "$only_cli")|" || true)
+  if [ -z "${OPM_USER_DATA_DIR:-}" ] || [ -z "${OPM_EXTENSIONS_DIR:-}" ]; then
+    [ -n "$match" ] || fail "$(basename "$only_cli") is not the CLI of VS Code, VS Code Insiders, VSCodium, Cursor or Windsurf: set OPM_USER_DATA_DIR and OPM_EXTENSIONS_DIR to the folders of its editor"
+  fi
   data_dir=${OPM_USER_DATA_DIR:-$(printf '%s' "$match" | cut -d '|' -f 2)}
   extensions_dir=${OPM_EXTENSIONS_DIR:-$(printf '%s' "$match" | cut -d '|' -f 3)}
   install_into "$cli_path" "$data_dir" "$extensions_dir"

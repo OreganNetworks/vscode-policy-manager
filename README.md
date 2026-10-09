@@ -60,7 +60,9 @@ Marketplace or Open VSX, so searching there won't find it.
 
 To install a VSIX you have, or into one editor only, run the script from a file:
 `sh install.sh --vsix <file> --cli codium` on macOS or Linux, and
-`.\install.ps1 -Vsix <file> -Cli codium.cmd` on Windows. The script opens the
+`.\install.ps1 -Vsix <file> -Cli codium.cmd` on Windows. For a CLI with another
+name, set `OPM_USER_DATA_DIR` and `OPM_EXTENSIONS_DIR` to the folders of its
+editor as well; the script refuses it otherwise, rather than guess. The script opens the
 Default profile by its English name, so in an editor with another display
 language, open a window with the default profile yourself.
 
