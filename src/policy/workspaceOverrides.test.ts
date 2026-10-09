@@ -5,6 +5,7 @@ import {
   findWorkspaceOverride,
   findWorkspaceOverrides,
   overrideMessage,
+  overridesAi,
   type WorkspaceOverride,
 } from './workspaceOverrides'
 import { createFakeLogger } from '../testing/fakeLogger'
@@ -40,6 +41,15 @@ describe('findWorkspaceOverrides', () => {
     const unregistered = { ...entries }
     delete unregistered[AI]
     assert.deepEqual(findWorkspaceOverrides(createFakeStore(unregistered)), [])
+  })
+})
+
+describe('overridesAi', () => {
+  it('is true for an override of an AI setting, and false for one of a telemetry setting', () => {
+    assert.equal(overridesAi([OVERRIDE]), true)
+    assert.equal(overridesAi([{ key: 'github.copilot.enable', scope: 'workspace folder', value: true }]), true)
+    assert.equal(overridesAi([{ key: 'telemetry.telemetryLevel', scope: 'workspace', value: 'all' }]), false)
+    assert.equal(overridesAi([]), false)
   })
 })
 

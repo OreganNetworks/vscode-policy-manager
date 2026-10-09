@@ -96,7 +96,7 @@ be public for that check, and for the install script URLs above, to work.
 |---|---|
 | Profiles | Applies itself to all profiles the first time it runs, and again if that is turned off, so every window runs the policy whatever its profile |
 | Telemetry | Sets `telemetry.telemetryLevel` to `"off"`, plus third-party flags such as `redhat.telemetry.enabled` where registered |
-| Built-in AI | Sets `chat.disableAIFeatures: true` and `github.copilot.enable: { "*": false }`, skipping any key the host editor has not registered, and says so in a notification when it switches them off |
+| Built-in AI | Sets `chat.disableAIFeatures: true` and `github.copilot.enable: { "*": false }`, skipping any key the host editor has not registered, and says so in a notification when it switches them off - except in a window whose workspace settings keep the AI on, where the workspace override warning shows instead |
 | Copilot extensions | Uninstalls the Copilot family and the extensions that depend on it (below), and does the same again on a later reinstall |
 | Drift | Restores a managed setting that is changed away from its policy value, and says so in a notification once a session. A setting something else keeps changing (5 restores in a minute, start-up included) is left alone for an hour, through a reload and in a new window too. The restores are counted across windows and extension host restarts |
 | Workspace overrides | Shows an error notification while a workspace or folder setting overrides a managed setting, such as `chat.disableAIFeatures: false` in a repository's `.vscode/settings.json`, and shows it again each time it is closed until the setting is removed. **Open Workspace Settings** opens the file. Workspace and folder settings are never written |

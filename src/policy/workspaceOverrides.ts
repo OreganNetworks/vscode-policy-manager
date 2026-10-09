@@ -98,6 +98,27 @@ export function findWorkspaceOverrides(
 }
 
 /**
+ * Whether a workspace or folder setting turns the built-in AI or GitHub Copilot back on in this window.  The policy
+ * still writes the AI settings at user level, but in this window the AI stays on, so a notice that the extension
+ * switched it off would be wrong; the override warning says what is going on instead.
+ *
+ * @param overrides  From {@link findWorkspaceOverrides}.
+ * @param settings   The managed settings.
+ * @returns True when one of `overrides` is for a setting in the `ai` group.
+ *
+ * @example
+ * overridesAi([{ key: 'chat.disableAIFeatures', scope: 'workspace', value: false }]) // true
+ * overridesAi([{ key: 'telemetry.telemetryLevel', scope: 'workspace', value: 'all' }]) // false
+ */
+export function overridesAi(
+  overrides: readonly WorkspaceOverride[],
+  settings: readonly ManagedSetting[] = MANAGED_SETTINGS,
+): boolean {
+  const aiKeys = new Set(settings.filter(setting => setting.group === 'ai').map(setting => setting.key))
+  return overrides.some(override => aiKeys.has(override.key))
+}
+
+/**
  * The warning text.
  *
  * @param overrides  At least one.

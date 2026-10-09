@@ -49,6 +49,7 @@ import {
   findWorkspaceOverrides,
   type OverrideWarningAnswer,
   overrideMessage,
+  overridesAi,
   type WorkspaceOverride,
 } from './policy/workspaceOverrides'
 import { collectStatusSnapshot, formatStatusReport } from './status'
@@ -95,7 +96,7 @@ export function activate(context: vscode.ExtensionContext): void {
   }
   const notices = createNotices({
     logger: log,
-    show: notice => showNotice(notice, log),
+    show: notice => showNotice({ log, notice, store }),
     store: createNoticeStore(context),
   })
 
@@ -437,9 +438,24 @@ async function showRemoved(names: readonly string[], log: vscode.LogOutputChanne
   if (choice === RELOAD_WINDOW) await vscode.commands.executeCommand('workbench.action.reloadWindow')
 }
 
-async function showNotice(notice: Notice, log: vscode.LogOutputChannel): Promise<void> {
+/** Arguments to {@link showNotice} */
+type ShowNoticeOptions = {
+  log: vscode.LogOutputChannel
+  notice: Notice
+  store: SettingsStore
+}
+
+async function showNotice({ log, notice, store }: ShowNoticeOptions): Promise<void> {
   switch (notice.kind) {
     case 'ai-switched-off':
+      /*
+       * A workspace setting that turns the AI on starts Copilot Chat, which registers its settings, and the policy then
+       * writes them at user level.  The AI stays on in this window all the same, and the override warning says why.
+       */
+      if (overridesAi(findWorkspaceOverrides(store))) {
+        log.info('No AI notification: a workspace setting keeps the built-in AI on in this window')
+        return
+      }
       return showAiSwitchedOff(log)
     case 'setting-restored':
       return showRestored(notice.key, log)
