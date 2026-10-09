@@ -98,7 +98,7 @@ be public for that check, and for the install script URLs above, to work.
 | Telemetry | Sets `telemetry.telemetryLevel` to `"off"`, plus third-party flags such as `redhat.telemetry.enabled` where registered |
 | Built-in AI | Sets `chat.disableAIFeatures: true` and `github.copilot.enable: { "*": false }`, skipping any key the host editor has not registered, and says so in a notification when it switches them off |
 | Copilot extensions | Uninstalls the Copilot family and the extensions that depend on it (below), and does the same again on a later reinstall |
-| Drift | Restores a managed setting that is changed away from its policy value, and says so in a notification once a session |
+| Drift | Restores a managed setting that is changed away from its policy value, and says so in a notification once a session. A setting something else keeps changing (5 restores in a minute) is left alone for an hour, counted across windows and extension host restarts |
 | Settings Sync | Leaves the managed settings and extensions, and itself, out of Settings Sync (`settingsSync.ignoredSettings` and `settingsSync.ignoredExtensions`), so the policy stays on this machine and a change made on another machine doesn't come back to be put right |
 | Claude Code | Recommends `anthropic.claude-code` in the **Oregan Policy Manager** output channel - nothing is installed automatically |
 | Updates | Follows the stable release: checks on load and every hour, verifies the VSIX SHA-256, then installs it whenever its version differs from the running one |

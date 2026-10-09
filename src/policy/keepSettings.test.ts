@@ -1,25 +1,43 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { createBurstGuard, createDriftHandler } from './keepSettings'
+import { createBurstGuard, createDriftHandler, createMemoryBurstStore, DRIFT_BURST } from './keepSettings'
 import { MANAGED_SETTINGS, type SettingInspection } from './settings'
 import { createFakeLogger } from '../testing/fakeLogger'
 import { createFakeStore, stockEntries } from '../testing/fakeSettingsStore'
 
 describe('createBurstGuard', () => {
-  it('allows up to the limit inside the window, then suspends the key for the session', () => {
-    const guard = createBurstGuard({ limit: 2, windowMs: 1000 })
-    assert.equal(guard.check('a', 0), 'allowed')
-    assert.equal(guard.check('a', 100), 'allowed')
-    assert.equal(guard.check('a', 200), 'suspended-now')
-    assert.equal(guard.check('a', 5000), 'suspended')
-    assert.equal(guard.check('b', 200), 'allowed')
+  const SHORT = { limit: 2, suspendMs: 60_000, windowMs: 1000 }
+
+  it('allows up to the limit inside the window, then suspends the key for suspendMs', async () => {
+    const guard = createBurstGuard(SHORT)
+    assert.equal(await guard.check('a', 0), 'allowed')
+    assert.equal(await guard.check('a', 100), 'allowed')
+    assert.equal(await guard.check('a', 200), 'suspended-now')
+    assert.equal(await guard.check('a', 5000), 'suspended')
+    assert.equal(await guard.check('b', 200), 'allowed')
+    assert.equal(await guard.check('a', 60_200), 'allowed')
   })
 
-  it('forgets restores that fall outside the window', () => {
-    const guard = createBurstGuard({ limit: 2, windowMs: 1000 })
-    guard.check('a', 0)
-    guard.check('a', 100)
-    assert.equal(guard.check('a', 1500), 'allowed')
+  it('forgets restores that fall outside the window', async () => {
+    const guard = createBurstGuard(SHORT)
+    await guard.check('a', 0)
+    await guard.check('a', 100)
+    assert.equal(await guard.check('a', 1500), 'allowed')
+  })
+
+  it('trips on restores 2 s apart, as the settings lock spaces them', async () => {
+    const guard = createBurstGuard(DRIFT_BURST)
+    const decisions = []
+    for (let at = 0; at <= 10_000; at += 2000) decisions.push(await guard.check('a', at))
+    assert.deepEqual(decisions, ['allowed', 'allowed', 'allowed', 'allowed', 'allowed', 'suspended-now'])
+  })
+
+  it('carries the count over to a new guard on the same store, as after an extension host restart', async () => {
+    const store = createMemoryBurstStore()
+    await createBurstGuard({ ...SHORT, store }).check('a', 0)
+    await createBurstGuard({ ...SHORT, store }).check('a', 100)
+    assert.equal(await createBurstGuard({ ...SHORT, store }).check('a', 200), 'suspended-now')
+    assert.equal(await createBurstGuard({ ...SHORT, store }).check('a', 300), 'suspended')
   })
 })
 
@@ -125,7 +143,7 @@ describe('createDriftHandler', () => {
     const logger = createFakeLogger()
     const store = createFakeStore(entries)
     const onChange = createDriftHandler({
-      guard: createBurstGuard({ limit: 2, windowMs: 10_000 }),
+      guard: createBurstGuard({ limit: 2, suspendMs: 60_000, windowMs: 10_000 }),
       logger,
       now: () => 0,
       ...NO_HOOKS,
