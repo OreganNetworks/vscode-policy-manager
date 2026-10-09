@@ -118,7 +118,7 @@ async function runProfilesSuite({ baseArgs, cli, vscodeExecutablePath }: EditorO
 function packageNextVersion(): { nextVersion: string; nextVsix: string } {
   const copy = join(CACHE, 'profiles-next')
   rmSync(copy, { force: true, recursive: true })
-  for (const file of ['.vscodeignore', 'LICENSE', 'README.md', 'out'])
+  for (const file of ['.vscodeignore', 'LICENSE', 'README.md', 'images', 'out'])
     cpSync(join(ROOT, file), join(copy, file), { recursive: true })
   const manifest = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')) as { version: string }
   const [major, minor, patch] = manifest.version.split('.').map(Number)

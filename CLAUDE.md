@@ -96,6 +96,7 @@ scripts/add-extension.mjs      # the Add extension and Try extension tasks
 .github/workflows/release.yml  # v* tags: test, package, publish the VSIX and manifest.json as Latest (stable)
 .github/workflows/promote.yml  # Promote to stable: mark an earlier (or later) release Latest, behind reviewers
 .github/CODEOWNERS             # ONYX and the admins outside it own every file; every PR needs one's approval
+images/icon.png                # the extension icon: a PNG, as vsce refuses an SVG icon
 ```
 
 ## Design constraints

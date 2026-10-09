@@ -1,4 +1,4 @@
-# Only the compiled extension, README.md, LICENSE and package.json go into the VSIX
+# Only the compiled extension, README.md, LICENSE, package.json and images/icon.png go into the VSIX
 .claude/**
 .github/**
 .superpowers/**
