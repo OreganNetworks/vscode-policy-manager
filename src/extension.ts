@@ -14,7 +14,13 @@ import {
   type InstalledExtension,
   MANAGED_EXTENSIONS,
 } from './policy/removeCopilotExtensions'
-import { createBurstGuard, createDriftHandler, createFileBurstStore, DRIFT_BURST } from './policy/keepSettings'
+import {
+  admitStartUpRestores,
+  createBurstGuard,
+  createDriftHandler,
+  createFileBurstStore,
+  DRIFT_BURST,
+} from './policy/keepSettings'
 import { aiFirstHostMessage, detectHost, type HostInfo } from './host'
 import { IDE_CONFIGURATION_URL, POLICY_URL } from './links'
 import { describeError } from './logger'
@@ -98,17 +104,19 @@ export function activate(context: vscode.ExtensionContext): void {
     notifyRemoved: names => detach(log, 'Removal notification', showRemoved(names, log)),
     registry,
   })
+  // Read and written by start-up and the drift handler, which both run under the settings lock, so every window reads
+  // the same count
+  const driftGuard = createBurstGuard({
+    ...DRIFT_BURST,
+    store: createFileBurstStore({ logger: log, path: join(context.globalStorageUri.fsPath, DRIFT_RESTORES_FILE) }),
+  })
   const onConfigurationChanged = createDriftHandler({
     afterFirstRestore(key, restored) {
       if (restored) notices.show(noticeForRestore(key))
       else detach(log, 'Drift notification', notices.forget(noticeForRestore(key)))
     },
     beforeFirstRestore: key => notices.save(noticeForRestore(key)),
-    // Read and written by the drift handler, which runs under the settings lock, so every window reads the same count
-    guard: createBurstGuard({
-      ...DRIFT_BURST,
-      store: createFileBurstStore({ logger: log, path: join(context.globalStorageUri.fsPath, DRIFT_RESTORES_FILE) }),
-    }),
+    guard: driftGuard,
     logger: log,
     store,
   })
@@ -212,10 +220,11 @@ export function activate(context: vscode.ExtensionContext): void {
   async function applySettings(): Promise<void> {
     // Before the policy writes anything, so none of it goes to the other machines on the sync account
     await keepOutOfSync(syncExclusions)
+    const settings = await admitStartUpRestores({ guard: driftGuard, logger: log, store })
     // Saved before the write, which can restart the extension host when Copilot Chat is running
-    const switchingOff = findAiSettingsOutOfLine(store).length > 0
+    const switchingOff = findAiSettingsOutOfLine(store, settings).length > 0
     if (switchingOff) await notices.save(AI_SWITCHED_OFF)
-    const switchedOff = findSwitchedOffAiSettings(await applyPolicy({ logger: log, store }))
+    const switchedOff = findSwitchedOffAiSettings(await applyPolicy({ logger: log, settings, store }))
     if (switchedOff.length) notices.show(AI_SWITCHED_OFF)
     else if (switchingOff) await notices.forget(AI_SWITCHED_OFF)
   }

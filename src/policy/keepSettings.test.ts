@@ -3,19 +3,30 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { after, describe, it } from 'node:test'
 import {
+  admitStartUpRestores,
   createBurstGuard,
   createDriftHandler,
   createFileBurstStore,
   createMemoryBurstStore,
   DRIFT_BURST,
 } from './keepSettings'
-import { MANAGED_SETTINGS, type SettingInspection } from './settings'
+import { applyPolicy, MANAGED_SETTINGS, type SettingInspection } from './settings'
 import { createFakeLogger } from '../testing/fakeLogger'
 import { createFakeStore, stockEntries } from '../testing/fakeSettingsStore'
 import { createTempDirs } from '../testing/tempDirs'
 
 const temp = createTempDirs('opm-keep-settings-')
 after(temp.removeAll)
+
+const TELEMETRY = 'telemetry.telemetryLevel'
+const AI = 'chat.disableAIFeatures'
+
+/** Every managed key registered and already at its policy value */
+function compliantEntries(): Record<string, SettingInspection> {
+  const entries = stockEntries()
+  for (const { key, value } of MANAGED_SETTINGS) entries[key] = { ...entries[key], globalValue: value }
+  return entries
+}
 
 /** A count file under a folder that doesn't exist yet, as in a new global storage */
 async function countPath(): Promise<string> {
@@ -96,16 +107,7 @@ describe('createFileBurstStore', () => {
 })
 
 describe('createDriftHandler', () => {
-  const TELEMETRY = 'telemetry.telemetryLevel'
-  const AI = 'chat.disableAIFeatures'
   const only = (key: string) => (changed: string) => changed === key
-
-  /** Every managed key registered and already at its policy value */
-  function compliantEntries(): Record<string, SettingInspection> {
-    const entries = stockEntries()
-    for (const { key, value } of MANAGED_SETTINGS) entries[key] = { ...entries[key], globalValue: value }
-    return entries
-  }
 
   /** Hooks that record their calls, with how many writes had happened by then */
   function recordingHooks(store: { writes: string[] }) {
@@ -209,5 +211,67 @@ describe('createDriftHandler', () => {
     }
     assert.equal(store.writes.length, 2)
     assert.equal(logger.lines.filter(line => line.startsWith('error:')).length, 1)
+  })
+})
+
+describe('admitStartUpRestores', () => {
+  const SHORT = { limit: 2, suspendMs: 60_000, windowMs: 10_000 }
+  const keys = (settings: readonly { key: string }[]) => settings.map(setting => setting.key)
+
+  it('counts each key start-up is about to write, and leaves out one the guard has suspended', async () => {
+    const entries = compliantEntries()
+    entries[TELEMETRY] = { defaultValue: 'all', globalValue: 'all' }
+    const logger = createFakeLogger()
+    const guard = createBurstGuard(SHORT)
+    const admit = (at: number) =>
+      admitStartUpRestores({ guard, logger, now: () => at, store: createFakeStore(entries) })
+    const all = keys(MANAGED_SETTINGS)
+    assert.deepEqual(keys(await admit(0)), all)
+    assert.deepEqual(keys(await admit(100)), all)
+    const others = all.filter(key => key !== TELEMETRY)
+    assert.deepEqual(keys(await admit(200)), others)
+    assert.deepEqual(keys(await admit(300)), others)
+    assert.deepEqual(
+      logger.lines.map(line => line.split(':')[0]),
+      ['error', 'info'],
+      logger.lines.join('\n'),
+    )
+  })
+
+  it('counts nothing when every key is in line', async () => {
+    const counts = createMemoryBurstStore()
+    const guard = createBurstGuard({ ...SHORT, store: counts })
+    const admitted = await admitStartUpRestores({
+      guard,
+      logger: createFakeLogger(),
+      store: createFakeStore(compliantEntries()),
+    })
+    assert.deepEqual(keys(admitted), keys(MANAGED_SETTINGS))
+    assert.equal(await counts.get(), undefined)
+  })
+
+  it('shares the count with the drift handler, so a writer that keeps turning the AI on is stopped', async () => {
+    // Each AI restore restarts the extension host, so the writer meets the drift handler and start-up in turn
+    const entries = compliantEntries()
+    const store = createFakeStore(entries)
+    const guard = createBurstGuard(SHORT)
+    const logger = createFakeLogger()
+    const onChange = createDriftHandler({
+      afterFirstRestore: () => undefined,
+      beforeFirstRestore: async () => undefined,
+      guard,
+      logger,
+      now: () => 0,
+      store,
+    })
+    const turnAiOn = () => (entries[AI] = { defaultValue: false, globalValue: false })
+    turnAiOn()
+    await onChange(key => key === AI)
+    turnAiOn()
+    await applyPolicy({ logger, settings: await admitStartUpRestores({ guard, logger, now: () => 100, store }), store })
+    turnAiOn()
+    await onChange(key => key === AI)
+    assert.deepEqual(store.writes, [AI, AI])
+    assert.equal(entries[AI].globalValue, false)
   })
 })

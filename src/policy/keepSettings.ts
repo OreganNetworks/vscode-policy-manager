@@ -8,22 +8,15 @@
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { describeError, type Logger } from '../logger'
-import {
-  applySetting,
-  isRegistered,
-  isSettingEqual,
-  MANAGED_SETTINGS,
-  type ManagedSetting,
-  type SettingsStore,
-} from './settings'
+import { applySetting, isOutOfLine, MANAGED_SETTINGS, type ManagedSetting, type SettingsStore } from './settings'
 
 /** Outcome of {@link BurstGuard.check} */
 export type BurstDecision = 'allowed' | 'suspended' | 'suspended-now'
 
 /**
- * Stops the drift handler fighting another writer indefinitely.  A key restored `limit` times inside `windowMs` is
- * left alone for `suspendMs`: something keeps rewriting it, and a restore loop would thrash `settings.json` without
- * ever winning - and for an AI setting, restart the extension host with every restore.
+ * Stops the drift handler and start-up fighting another writer indefinitely.  A key restored `limit` times inside
+ * `windowMs` is left alone for `suspendMs`: something keeps rewriting it, and a restore loop would thrash
+ * `settings.json` without ever winning - and for an AI setting, restart the extension host with every restore.
  */
 export type BurstGuard = {
   /**
@@ -88,10 +81,10 @@ export function createMemoryBurstStore(): BurstStore {
 }
 
 /**
- * A {@link BurstStore} in a file the windows share.  It is read and written only by passes that hold the settings lock
- * (`settingsLock.ts`), so each window reads the count the last one left.  `ExtensionContext.globalState` can't do
- * this: another window sees a change to it seconds later, and a window that writes back its own stale copy wipes out
- * a suspension the other window has just made.
+ * A {@link BurstStore} in a file the windows share.  It is read and written only by start-up and the drift handler,
+ * which hold the settings lock (`settingsLock.ts`) while they do, so each window reads the count the last one left.
+ * `ExtensionContext.globalState` can't do this: another window sees a change to it seconds later, and a window that
+ * writes back its own stale copy wipes out a suspension the other window has just made.
  *
  * A missing or unreadable file reads as no restores.  A failed write is logged, and costs at most a restore the guard
  * doesn't count.
@@ -187,6 +180,67 @@ export function createBurstGuard({
   }
 }
 
+/** Arguments to {@link mayRestore} */
+type MayRestoreOptions = {
+  guard: BurstGuard
+  key: string
+  logger: Logger
+  /** Epoch milliseconds */
+  now: number
+}
+
+/**
+ * Counts a restore of `key` with the guard, and logs the moment the guard suspends the key.
+ *
+ * @param options  The guard, the key and the time.
+ * @returns What the guard decided: the restore goes ahead only when it is `allowed`.
+ */
+async function mayRestore({ guard, key, logger, now }: MayRestoreOptions): Promise<BurstDecision> {
+  const decision = await guard.check(key, now)
+  if (decision === 'suspended-now')
+    logger.error(`${key}: restored too often - something else keeps changing it, left alone for an hour`)
+  return decision
+}
+
+/** Arguments to {@link admitStartUpRestores} */
+export type StartUpRestoresOptions = {
+  guard: BurstGuard
+  logger: Logger
+  store: Pick<SettingsStore, 'inspect'>
+  now?: () => number
+  /** Defaults to {@link MANAGED_SETTINGS} */
+  settings?: readonly ManagedSetting[]
+}
+
+/**
+ * The managed settings start-up may write.  Each one out of line counts with the guard as a restore, as the drift
+ * handler counts one, and a key the guard has suspended is left out, so it stays as it is through a reload and in a new
+ * window until the suspension ends.  Start-up has to count: restoring an AI setting restarts the extension host, so
+ * something that keeps turning the AI back on meets start-up as often as the drift handler.
+ *
+ * @param options  The guard, and the settings to read.
+ * @returns The settings for `applyPolicy`, in table order, without the suspended ones.
+ */
+export async function admitStartUpRestores({
+  guard,
+  logger,
+  now = Date.now,
+  settings = MANAGED_SETTINGS,
+  store,
+}: StartUpRestoresOptions): Promise<ManagedSetting[]> {
+  const admitted: ManagedSetting[] = []
+  for (const setting of settings) {
+    const decision = isOutOfLine(store, setting)
+      ? await mayRestore({ guard, key: setting.key, logger, now: now() })
+      : 'allowed'
+    if (decision === 'allowed') admitted.push(setting)
+    // Said once a session, where the drift handler skips the key without a word at every change
+    else if (decision === 'suspended')
+      logger.info(`${setting.key}: left as it is, as it was restored too often less than an hour ago`)
+  }
+  return admitted
+}
+
 /** Handler for `workspace.onDidChangeConfiguration`, given the event's `affectsConfiguration` */
 export type DriftHandler = (affects: (key: string) => boolean) => Promise<void>
 
@@ -225,15 +279,8 @@ export function createDriftHandler({
   let reported = false
   return async function onConfigurationChanged(affects) {
     for (const setting of settings) {
-      if (!affects(setting.key)) continue
-      const inspection = store.inspect(setting.key)
-      if (!isRegistered(inspection) || isSettingEqual(inspection?.globalValue, setting.value)) continue
-      const decision = await guard.check(setting.key, now())
-      if (decision === 'suspended') continue
-      if (decision === 'suspended-now') {
-        logger.error(`${setting.key}: restored too often - something else keeps changing it, left alone for an hour`)
-        continue
-      }
+      if (!affects(setting.key) || !isOutOfLine(store, setting)) continue
+      if ((await mayRestore({ guard, key: setting.key, logger, now: now() })) !== 'allowed') continue
       const first = !reported
       if (first) await beforeFirstRestore(setting.key)
       const result = await applySetting({ logger, setting, store })

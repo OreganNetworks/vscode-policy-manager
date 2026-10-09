@@ -135,6 +135,18 @@ export async function applySetting({ logger, setting, store }: ApplySettingOptio
 }
 
 /**
+ * Whether {@link applySetting} would write a setting: registered, and with a user value other than the policy value.
+ *
+ * @param store    The settings to read.
+ * @param setting  The managed setting.
+ * @returns True when the user value is out of line with the policy.
+ */
+export function isOutOfLine(store: Pick<SettingsStore, 'inspect'>, { key, value }: ManagedSetting): boolean {
+  const inspection = store.inspect(key)
+  return isRegistered(inspection) && !isSettingEqual(inspection?.globalValue, value)
+}
+
+/**
  * The AI settings an apply is about to write: registered, and with a user value other than the policy value.  The
  * start-up notification is saved before the apply when this is not empty, since turning the built-in AI off can restart
  * the extension host as soon as the setting is written.
@@ -147,13 +159,7 @@ export function findAiSettingsOutOfLine(
   store: Pick<SettingsStore, 'inspect'>,
   settings: readonly ManagedSetting[] = MANAGED_SETTINGS,
 ): string[] {
-  return settings
-    .filter(({ group, key, value }) => {
-      if (group !== 'ai') return false
-      const inspection = store.inspect(key)
-      return isRegistered(inspection) && !isSettingEqual(inspection?.globalValue, value)
-    })
-    .map(setting => setting.key)
+  return settings.filter(setting => setting.group === 'ai' && isOutOfLine(store, setting)).map(setting => setting.key)
 }
 
 /**
