@@ -20,6 +20,7 @@ if (!existsSync(vsix)) {
 }
 
 const windows = process.platform === 'win32'
+const OLD_ID = 'oregan.oregan-policy-manager'
 
 if (process.argv[2] === '--clean') {
   const tryDir = join(root, '.vscode-test', 'try')
@@ -28,6 +29,12 @@ if (process.argv[2] === '--clean') {
   const args = list => (windows ? list.map(arg => `"${arg}"`) : list)
   // The CLI of VS Code 1.140 and later prints a url.parse() deprecation warning from its own code on every install
   const env = { ...process.env, NODE_OPTIONS: [process.env.NODE_OPTIONS, '--no-deprecation'].filter(Boolean).join(' ') }
+  /*
+   * A copy under the old ID, from a build before the publisher became oregannetworks, registers the same commands, so
+   * this one fails to activate beside it.  The install script removes it too.  Where there is none, the uninstall fails
+   * and is ignored.
+   */
+  spawnSync('code', args([...editorArgs, '--uninstall-extension', OLD_ID]), { env, shell: windows, stdio: 'ignore' })
   const install = spawnSync('code', args([...editorArgs, '--install-extension', vsix, '--force']), {
     env,
     shell: windows,
