@@ -84,6 +84,13 @@ All settings are written to user settings (`ConfigurationTarget.Global`).
 `chat.disableAIFeatures` does not affect Claude Code, which sits outside
 VS Code's built-in AI surface.
 
+Every open window runs the extension, but only one window at a time writes
+user settings, under a lock that the windows share. Windows that wrote
+`settings.json` together would refuse each other's writes, and each refused
+write stays in its window as unsaved changes to `settings.json`, which turn up
+later as a save conflict. The policy is written once, in whichever window takes
+the lock first; the others find it in place.
+
 VS Code 1.138 and later ship GitHub Copilot Chat (`GitHub.copilot-chat`) as a
 built-in extension, which can't be uninstalled, and nor can a newer copy of it
 from the Marketplace. The extension leaves either in place and relies on

@@ -2,13 +2,13 @@
  * REQUIREMENT: Self-update
  *
  * Checks GitHub Releases on start-up and hourly, one window per cycle, and installs the stable release whenever its
- * version differs from the running one, once its SHA-256 matches.  `manifest.ts`, `download.ts` and `lock.ts` are its
- * parts.
+ * version differs from the running one, once its SHA-256 matches.  `manifest.ts` and `download.ts` are its parts, and
+ * `../lock.ts` keeps the check to one window a cycle.
  */
 import { rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { downloadVerified, httpGet } from './download'
-import { tryAcquireCycleLock } from './lock'
+import { tryAcquireCycleLock } from '../lock'
 import { describeError, type Logger } from '../logger'
 import { compareVersions, parseManifest, type ReleaseManifest } from './manifest'
 

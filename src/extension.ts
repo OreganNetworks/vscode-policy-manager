@@ -35,6 +35,7 @@ import {
   type SettingsStore,
 } from './policy/settings'
 import { CLAUDE_CODE_ID, claudeCodeMessage } from './policy/recommendClaudeCode'
+import { createSettingsLock } from './settingsLock'
 import { collectStatusSnapshot, formatStatusReport } from './status'
 import {
   createUpdater,
@@ -47,6 +48,7 @@ import {
 const OUTPUT_CHANNEL_NAME = 'Oregan Policy Manager'
 const UPDATER_STATE_KEY = 'updater'
 const NOTICES_STATE_KEY = 'notices'
+const SETTINGS_LOCK_FILE = 'settings-write.lock'
 const READ_THE_POLICY = 'Read the policy'
 const RELOAD_WINDOW = 'Reload Window'
 const SHOW_DETAILS = 'Show Details'
@@ -59,7 +61,12 @@ export function activate(context: vscode.ExtensionContext): void {
   const log = vscode.window.createOutputChannel(OUTPUT_CHANNEL_NAME, { log: true })
   const host = detectHost(vscode.env.appName)
   const version = String(context.extension.packageJSON.version)
-  const store = createSettingsStore()
+  // Every write to user settings goes through the lock, one window at a time (see settingsLock.ts)
+  const settingsLock = createSettingsLock({
+    logger: log,
+    path: join(context.globalStorageUri.fsPath, SETTINGS_LOCK_FILE),
+  })
+  const store = settingsLock.track(createSettingsStore())
   const registry = createExtensionRegistry()
   const updaterCache = createUpdaterCache(context)
   const syncExclusions = {
@@ -117,13 +124,18 @@ export function activate(context: vscode.ExtensionContext): void {
       showCheckResult(await updater.check({ force: true }), version, log)
     }),
     vscode.workspace.onDidChangeConfiguration(event => {
+      const affects = (key: string) => event.affectsConfiguration(key)
       detach(
         log,
         'Drift check',
-        onConfigurationChanged(key => event.affectsConfiguration(key)),
+        settingsLock.run('Drift check', () => onConfigurationChanged(affects)),
       )
-      if (event.affectsConfiguration(IGNORED_SETTINGS_KEY) || event.affectsConfiguration(IGNORED_EXTENSIONS_KEY))
-        detach(log, 'Settings Sync lists', keepOutOfSync(syncExclusions))
+      if (affects(IGNORED_SETTINGS_KEY) || affects(IGNORED_EXTENSIONS_KEY))
+        detach(
+          log,
+          'Settings Sync lists',
+          settingsLock.run('Settings Sync lists', () => keepOutOfSync(syncExclusions)),
+        )
     }),
     vscode.extensions.onDidChange(() => detach(log, 'Copilot removal', remover.run())),
   )
@@ -149,11 +161,23 @@ export function activate(context: vscode.ExtensionContext): void {
     dispose() {
       clearImmediate(deferred)
       schedule?.dispose()
+      detach(log, 'Settings lock', settingsLock.dispose())
     },
   })
 
   async function startUp(): Promise<void> {
     notices.showSaved()
+    await settingsLock.run('Start-up', applySettings)
+    // Every window, as extensions are per profile, and the editor queues the uninstalls
+    await remover.run()
+    const claudeCodeInstalled = registry.list().some(extension => extension.id.toLowerCase() === CLAUDE_CODE_ID)
+    log.info(claudeCodeMessage({ cli: host.cli, installed: claudeCodeInstalled }).join('\n'))
+    const hostWarning = aiFirstHostMessage(host)
+    if (hostWarning.length) log.warn(hostWarning.join('\n'))
+  }
+
+  /** The settings part of start-up, run under the settings lock: a window that waited for it finds nothing to write */
+  async function applySettings(): Promise<void> {
     // Before the policy writes anything, so none of it goes to the other machines on the sync account
     await keepOutOfSync(syncExclusions)
     // Saved before the write, which can restart the extension host when Copilot Chat is running
@@ -162,11 +186,6 @@ export function activate(context: vscode.ExtensionContext): void {
     const switchedOff = findSwitchedOffAiSettings(await applyPolicy({ logger: log, store }))
     if (switchedOff.length) notices.show(AI_SWITCHED_OFF)
     else if (switchingOff) await notices.forget(AI_SWITCHED_OFF)
-    await remover.run()
-    const claudeCodeInstalled = registry.list().some(extension => extension.id.toLowerCase() === CLAUDE_CODE_ID)
-    log.info(claudeCodeMessage({ cli: host.cli, installed: claudeCodeInstalled }).join('\n'))
-    const hostWarning = aiFirstHostMessage(host)
-    if (hostWarning.length) log.warn(hostWarning.join('\n'))
   }
 }
 

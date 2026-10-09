@@ -1,3 +1,7 @@
+/*
+ * Lock files in the global storage, which every window shares: the update check takes one for a cycle, and the
+ * settings lock (`settingsLock.ts`) takes one for each pass that may write user settings.
+ */
 import { link, mkdir, open, rename, rm, stat, utimes } from 'node:fs/promises'
 import { dirname } from 'node:path'
 

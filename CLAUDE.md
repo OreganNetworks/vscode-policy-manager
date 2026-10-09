@@ -82,9 +82,10 @@ src/
     cliInstall.ts         # installing an update with the editor CLI, into the Default profile
     manifest.ts           # release manifest parsing, version comparison
     download.ts           # bounded HTTPS GET, verified download
-    lock.ts               # single-window cycle lock
     releaseManifest.test.ts  # release script output against what the updater accepts
   notices.ts      # notifications saved across an extension host restart
+  settingsLock.ts # one window at a time writes user settings
+  lock.ts         # lock files in the global storage, for the update check and the settings lock
   logger.ts       # Logger port, describeError
   links.ts        # policy and IDE Configuration URLs
   testing/        # spec helpers, excluded from the build
@@ -172,6 +173,13 @@ These are the ones that are easy to get wrong:
     `settingsSync.ignoredExtensions`, merged with the developer's own entries.
     Otherwise a change made on another machine on the same sync account comes
     back as drift, and restoring an AI setting restarts the extension host.
+17. **One window writes at a time.** Every window runs the extension, and they
+    react to the same moments (start-up, applying to all profiles, drift).
+    Every pass that may write user settings goes through `settingsLock.ts`,
+    with the store from its `track()`, and reads the settings again once it
+    holds the lock. Windows writing `settings.json` together refuse each
+    other's writes and leave unsaved copies of it behind. The Copilot removal
+    stays in every window: extensions are per profile.
 
 ## Open questions
 

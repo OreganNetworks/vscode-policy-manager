@@ -3,7 +3,7 @@ import { stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { after, describe, it } from 'node:test'
 import { takeOverStaleLock, tryAcquireCycleLock } from './lock'
-import { createTempDirs } from '../testing/tempDirs'
+import { createTempDirs } from './testing/tempDirs'
 
 const TTL = 60_000
 const temp = createTempDirs('opm-lock-')
