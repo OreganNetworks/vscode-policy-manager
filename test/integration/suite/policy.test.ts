@@ -79,6 +79,10 @@ describe('Oregan Policy Manager', () => {
   it('turns the built-in AI off, where this editor has the setting', async function () {
     if (inspect('chat.disableAIFeatures')?.defaultValue === undefined) return this.skip()
     await waitFor(() => inspect('chat.disableAIFeatures')?.globalValue === true, 'chat.disableAIFeatures')
+    await waitFor(
+      () => readOutputLog().includes("Notification: Oregan Policy Manager switched off the editor's built-in AI"),
+      'the AI notification in the output log',
+    )
   })
 
   it('leaves the managed settings and extensions out of Settings Sync', async function () {
@@ -114,6 +118,10 @@ describe('Oregan Policy Manager', () => {
       .getConfiguration()
       .update('telemetry.telemetryLevel', 'all', vscode.ConfigurationTarget.Global)
     await waitFor(() => inspect('telemetry.telemetryLevel')?.globalValue === 'off', 'the drift restore')
+    await waitFor(
+      () => readOutputLog().includes('Notification: Oregan Policy Manager set telemetry.telemetryLevel'),
+      'the drift notification in the output log',
+    )
   })
 
   it('reports a compliant machine in the output channel', async () => {

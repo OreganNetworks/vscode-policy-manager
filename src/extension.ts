@@ -93,7 +93,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const remover = createCopilotRemover({
     logger: log,
-    notifyRemoved: names => detach(log, 'Removal notification', showRemoved(names)),
+    notifyRemoved: names => detach(log, 'Removal notification', showRemoved(names, log)),
     registry,
   })
   const onConfigurationChanged = createDriftHandler({
@@ -111,7 +111,7 @@ export function activate(context: vscode.ExtensionContext): void {
     currentVersion: version,
     install: vsixPath => installVsix({ context, host, log, vsixPath }),
     logger: log,
-    onInstalled: installed => detach(log, 'Reload prompt', showReloadPrompt(installed)),
+    onInstalled: installed => detach(log, 'Reload prompt', showReloadPrompt(installed, log)),
     storageDir: context.globalStorageUri.fsPath,
   })
 
@@ -373,8 +373,24 @@ async function installVsix({ context, host, log, vsixPath }: InstallVsixOptions)
   await vscode.commands.executeCommand('workbench.extensions.installExtension', vscode.Uri.file(vsixPath))
 }
 
-async function showRemoved(names: readonly string[]): Promise<void> {
-  const choice = await vscode.window.showInformationMessage(
+/**
+ * Shows an information message, and logs it and the answer, so the output channel records every notification.
+ *
+ * @param log      The output channel.
+ * @param message  The message.
+ * @param items    The buttons.
+ * @returns The button chosen, or `undefined` when the notification was closed.
+ */
+async function notify(log: vscode.LogOutputChannel, message: string, ...items: string[]): Promise<string | undefined> {
+  log.info(`Notification: ${message}`)
+  const choice = await vscode.window.showInformationMessage(message, ...items)
+  log.info(`Notification: ${choice === undefined ? 'closed' : `${choice} chosen`}`)
+  return choice
+}
+
+async function showRemoved(names: readonly string[], log: vscode.LogOutputChannel): Promise<void> {
+  const choice = await notify(
+    log,
     `Oregan Policy Manager removed ${names.join(', ')}. GitHub Copilot isn't on Oregan's approved AI tool register.`,
     READ_THE_POLICY,
     RELOAD_WINDOW,
@@ -389,12 +405,13 @@ async function showNotice(notice: Notice, log: vscode.LogOutputChannel): Promise
     case 'ai-switched-off':
       return showAiSwitchedOff(log)
     case 'setting-restored':
-      return showRestored(notice.key)
+      return showRestored(notice.key, log)
   }
 }
 
 async function showAiSwitchedOff(log: vscode.LogOutputChannel): Promise<void> {
-  const choice = await vscode.window.showInformationMessage(
+  const choice = await notify(
+    log,
     "Oregan Policy Manager switched off the editor's built-in AI and GitHub Copilot, as Oregan's Agentic AI " +
       'Development Policy requires. Claude Code is the approved assistant.',
     READ_THE_POLICY,
@@ -404,15 +421,17 @@ async function showAiSwitchedOff(log: vscode.LogOutputChannel): Promise<void> {
   if (choice === SHOW_DETAILS) log.show(true)
 }
 
-async function showRestored(key: string): Promise<void> {
-  await vscode.window.showInformationMessage(
+async function showRestored(key: string, log: vscode.LogOutputChannel): Promise<void> {
+  await notify(
+    log,
     `Oregan Policy Manager set ${key} to the value Oregan's Agentic AI Development Policy requires. ` +
       'Details are in the Oregan Policy Manager output.',
   )
 }
 
-async function showReloadPrompt(version: string): Promise<void> {
-  const choice = await vscode.window.showInformationMessage(
+async function showReloadPrompt(version: string, log: vscode.LogOutputChannel): Promise<void> {
+  const choice = await notify(
+    log,
     `Oregan Policy Manager ${version} is installed. Reload the window to start using it.`,
     RELOAD_WINDOW,
   )
@@ -431,7 +450,7 @@ function showCheckResult(
     case 'up-to-date':
       // A release installed earlier this session counts as up to date, but only runs once the window reloads
       if (latestVersion && compareVersions(latestVersion, version) !== 0) {
-        detach(log, 'Reload prompt', showReloadPrompt(latestVersion))
+        detach(log, 'Reload prompt', showReloadPrompt(latestVersion, log))
         return
       }
       void vscode.window.showInformationMessage(`Oregan Policy Manager ${version} is up to date.`)
