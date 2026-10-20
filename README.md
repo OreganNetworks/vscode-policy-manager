@@ -220,10 +220,11 @@ extension. The VSIX is attached to the run
 as the `vsix` artifact.
 
 Nobody pushes to `main` directly. A pull request merges once those jobs pass
-and a code owner approves its latest push: a member of the ONYX team, or one of
-the repository admins outside it (`.github/CODEOWNERS`). Only ONYX and the
-repository admins can merge it: the branch protection rule on `main` lets only
-the ONYX team push to it, which merging is, and admins are exempt from it.
+and a code owner approves its latest push: a member of the
+`vscode-policy-manager-approvers` team (`.github/CODEOWNERS`). An approval from
+the rest of ONYX counts as a review, not as the approval the merge needs. Only ONYX and the repository
+admins can merge: the branch protection rule on `main` lets only the ONYX team
+push to it, which merging is, and admins are exempt from it.
 Anyone else with write access can review a pull request, but not merge it.
 
 ### Running it
@@ -245,11 +246,14 @@ state, and leaves your own editor alone.
 ### Releasing
 
 To release, bump `version` in `package.json` and merge that to `main`, then push
-a matching tag on the merged commit (`v0.1.1`). Only the repository admins can
-push, move or delete a `v*` tag, and the `Release` workflow refuses a tag on a
-commit that isn't on `main`. It tests, packages and publishes the VSIX with its
+a matching tag on the merged commit (`v0.1.1`). Only the
+`vscode-policy-manager-approvers` team and the organisation owners can push,
+move or delete a `v*` tag, and the `Release` workflow refuses a tag on a commit
+that isn't on `main`. It tests, packages and publishes the VSIX with its
 `manifest.json` and the two install scripts, and marks the release Latest, so it
-is stable straight away.
+is stable straight away. Releases are immutable: once one is published, nobody
+can add, replace or delete the files in it, or move its tag, so every copy
+installs the VSIX the workflow built from `main`.
 
 To roll stable back, or forward again, run **Promote to stable** with the
 version stable should be:
@@ -267,6 +271,11 @@ The workflow runs in the `release` environment, which takes deployments from
 `main` only. It stops at its first step until that environment has required
 reviewers, which it gets when the repository goes public.
 
+Anyone with write access can still mark a release Latest from the Releases
+page, with no reviewer: GitHub has no finer permission for releases. As
+releases are immutable, that can only move stable to a version the `Release`
+workflow published.
+
 ### Going public
 
 The repository is private until the CSO signs off making it public. Until then
@@ -280,13 +289,14 @@ only. Once it is signed off:
    gh repo edit OreganNetworks/vscode-policy-manager --visibility public --accept-visibility-change-consequences
    ```
 
-2. Make the ONYX team the required reviewers of the `release` environment, so
-   **Promote to stable** runs. Whoever starts a run can't approve it:
+2. Make the `vscode-policy-manager-approvers` team the required reviewers of
+   the `release` environment, so **Promote to stable** runs. Whoever starts a
+   run can't approve it:
 
    ```sh
    gh api -X PUT repos/OreganNetworks/vscode-policy-manager/environments/release --input - <<'EOF'
    {
-     "reviewers": [{ "type": "Team", "id": 11040468 }],
+     "reviewers": [{ "type": "Team", "id": 20219239 }],
      "prevent_self_review": true,
      "can_admins_bypass": false,
      "deployment_branch_policy": { "protected_branches": false, "custom_branch_policies": true }
@@ -295,8 +305,9 @@ only. Once it is signed off:
    ```
 
 3. A public repository can always be forked, so anyone can open a pull
-   request; only ONYX and the admins can still merge one. Require an approval
-   before CI runs on a pull request from outside the organisation:
+   request; only ONYX and the admins can still merge one, and only with a code
+   owner's approval. Require an approval before CI runs on a pull request from
+   outside the organisation:
 
    ```sh
    gh api -X PUT repos/OreganNetworks/vscode-policy-manager/actions/permissions/fork-pr-contributor-approval \

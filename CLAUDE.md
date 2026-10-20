@@ -101,7 +101,7 @@ scripts/add-extension.mjs      # the Add extension task (through the install scr
 .github/workflows/ci.yml       # every PR: lint, format, typecheck, build, test, package, integration
 .github/workflows/release.yml  # v* tags: test, package, publish the VSIX and manifest.json as Latest (stable)
 .github/workflows/promote.yml  # Promote to stable: mark an earlier (or later) release Latest, behind reviewers
-.github/CODEOWNERS             # ONYX and the admins outside it own every file; every PR needs one's approval
+.github/CODEOWNERS             # the vscode-policy-manager-approvers team owns every file; every PR needs one's approval
 images/icon.png                # the extension icon: a PNG, as vsce refuses an SVG icon
 ```
 
@@ -207,11 +207,12 @@ been answered before building on an assumption:
    or steer those developers to VS Code or VSCodium?
 5. Who owns the accounts that register the `oregannetworks` publisher on the
    VS Code Marketplace and Open VSX (TMP-8141).
-6. Who are the required reviewers on the `release` environment that
-   **Promote to stable** runs in. The ONYX team, as far as we know. The
-   environment exists, limited to `main`, but on the GitHub Team plan required
-   reviewers wait for the repository to be public, and the workflow refuses to
-   run until it has them. README **Going public** has the steps.
+6. Answered: the `vscode-policy-manager-approvers` team, the code owners, are
+   the required reviewers on the `release` environment that **Promote to
+   stable** runs in. The environment exists, limited to `main`, but on the
+   GitHub Team plan required reviewers wait for the repository to be public,
+   and the workflow refuses to run until it has them. README **Going public**
+   has the steps.
 7. Rollout: each developer installs the extension by hand, with the install
    script, and can uninstall it. Will IT push the install, for example by
    running the script through MDM?

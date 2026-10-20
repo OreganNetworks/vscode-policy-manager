@@ -1,3 +1,4 @@
-# ONYX, and the repository admins outside it, own every file; the main ruleset requires a code owner's approval on
-# every pull request.  A later line for the same files would replace this one, so owners go on this line.
-* @OreganNetworks/onyx @mark-oregan @savanesoff @stansmiljanic-dev
+# The vscode-policy-manager-approvers team, the repository admins and maintainers, owns every file; the main ruleset
+# requires a code owner's approval on every pull request, so an approval from the rest of ONYX is not enough to merge.
+# A later line for the same files would replace this one, so owners go on this line.
+* @OreganNetworks/vscode-policy-manager-approvers
