@@ -223,7 +223,9 @@ Nobody pushes to `main` directly. A pull request merges once those jobs pass
 and a code owner approves its latest push: a member of the
 `vscode-policy-manager-approvers` team (`.github/CODEOWNERS`). An approval from
 the rest of ONYX counts as a review, not as the approval the merge needs. Only
-ONYX and the repository admins have write access, so only they can merge.
+ONYX and the repository admins have write access, so only they can merge. The
+`main branch protection` ruleset has no bypass, so admins need that approval
+and the checks like everyone else.
 
 ### Running it
 
@@ -246,11 +248,17 @@ state, and leaves your own editor alone.
 To release, bump `version` in `package.json` and merge that to `main`, then push
 a matching tag on the merged commit (`v0.1.1`). Only the
 `vscode-policy-manager-approvers` team and the organisation owners can push,
-move or delete a `v*` tag, and the `Release` workflow refuses a tag on a commit
-that isn't on `main`. It tests, packages and publishes the VSIX with its
+move or delete a tag, of any name, so only they can publish a release: a release
+can't be published without its tag. The `Release` workflow refuses a tag on a
+commit that isn't on `main`, but it runs the copy of itself at the tagged
+commit, so that catches a mistaken tag, not a deliberate one. It tests,
+packages and publishes the VSIX with its
 `manifest.json` and the two install scripts, and marks the release Latest, so it
 is stable straight away. Releases are immutable: once one is published, nobody
-can add, replace or delete the files in it, or move its tag.
+can add, replace or delete the files in it, or move its tag. A tag whose
+`Release` run fails before it publishes is left without a release, and anyone
+with write access could publish one on it, so re-run the workflow or delete the
+tag straight away.
 
 To check that the update check and the install script can read the stable
 release without signing in:
@@ -277,6 +285,31 @@ The workflow runs in the `release` environment, which takes deployments from
 team to approve the run; whoever starts a run can't approve it. Should the
 environment lose its required reviewers, the workflow stops at its first step
 rather than move stable with no reviewer.
+
+<details>
+<summary>Setting up the <code>release</code> environment</summary>
+
+The team as the required reviewers, with no self-review and no admin bypass:
+
+```sh
+gh api -X PUT repos/OreganNetworks/vscode-policy-manager/environments/release --input - <<'EOF'
+{
+  "reviewers": [{ "type": "Team", "id": 20219239 }],
+  "prevent_self_review": true,
+  "can_admins_bypass": false,
+  "deployment_branch_policy": { "protected_branches": false, "custom_branch_policies": true }
+}
+EOF
+```
+
+For an environment created afresh, deployments from `main` only as well:
+
+```sh
+gh api -X POST repos/OreganNetworks/vscode-policy-manager/environments/release/deployment-branch-policies \
+  -f name=main -f type=branch
+```
+
+</details>
 
 Anyone with write access can still mark a release Latest from the Releases
 page, with no reviewer: GitHub has no finer permission for releases. As
