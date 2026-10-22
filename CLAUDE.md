@@ -195,9 +195,8 @@ These are the ones that are easy to get wrong:
 From spec section 8. These gate design decisions, so check whether they have
 been answered before building on an assumption:
 
-1. CSO sign-off for company-wide distribution, and for making the release repo
-   public. If it has to stay private, the self-update switches to authenticated
-   requests via `vscode.authentication.getSession('github', ['repo'])`.
+1. CSO sign-off for company-wide distribution. Making the release repo public
+   is signed off, so the self-update stays unauthenticated.
 2. Answered: Claude Code is on Open VSX (`Anthropic.claude-code`), so the
    install instruction works in VSCodium, Cursor and Windsurf.
 3. Each fork's VS Code base version, the resulting `engines.vscode` floor, and
@@ -209,10 +208,8 @@ been answered before building on an assumption:
    VS Code Marketplace and Open VSX (TMP-8141).
 6. Answered: the `vscode-policy-manager-approvers` team, the code owners, are
    the required reviewers on the `release` environment that **Promote to
-   stable** runs in. The environment exists, limited to `main`, but on the
-   GitHub Team plan required reviewers wait for the repository to be public,
-   and the workflow refuses to run until it has them. README **Going public**
-   has the steps.
+   stable** runs in. The environment takes deployments from `main` only, and
+   the workflow refuses to run while it has no required reviewers.
 7. Rollout: each developer installs the extension by hand, with the install
    script, and can uninstall it. Will IT push the install, for example by
    running the script through MDM?

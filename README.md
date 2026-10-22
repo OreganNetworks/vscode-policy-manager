@@ -19,7 +19,6 @@ NDA commitments and the
 - [Development](#development)
   - [Running it](#running-it)
   - [Releasing](#releasing)
-  - [Going public](#going-public)
 - [What it is not](#what-it-is-not)
 - [References](#references)
 
@@ -87,8 +86,7 @@ extension, and is harmless; `NODE_OPTIONS=--no-deprecation` hides it. The
 install script hides it.
 
 The extension then keeps itself on the stable release (see
-[Versions and updates](#versions-and-updates)). The release repository has to
-be public for that check, and for the install script URLs above, to work.
+[Versions and updates](#versions-and-updates)).
 
 ## What it does
 
@@ -217,15 +215,18 @@ unit tests, the integration suite on VS Code 1.90.0 and stable, on Linux, macOS
 and Windows (including the packaged VSIX installed into a named profile, and
 the install script), and a package check that the VSIX holds only the
 extension. The VSIX is attached to the run
-as the `vsix` artifact.
+as the `vsix` artifact. The repository is public, so anyone can fork it and
+open a pull request; on a pull request from outside the organisation, `CI` runs
+only once someone with write access approves the run.
 
 Nobody pushes to `main` directly. A pull request merges once those jobs pass
 and a code owner approves its latest push: a member of the
 `vscode-policy-manager-approvers` team (`.github/CODEOWNERS`). An approval from
-the rest of ONYX counts as a review, not as the approval the merge needs. Only ONYX and the repository
-admins can merge: the branch protection rule on `main` lets only the ONYX team
-push to it, which merging is, and admins are exempt from it.
-Anyone else with write access can review a pull request, but not merge it.
+the rest of ONYX counts as a review, not as the approval the merge needs. Only
+ONYX and the repository admins can merge: the branch protection rule on `main`
+lets only the ONYX team push to it, which merging is, and admins are exempt
+from it. Anyone else with write access can review a pull request, but not merge
+it.
 
 ### Running it
 
@@ -255,6 +256,14 @@ is stable straight away. Releases are immutable: once one is published, nobody
 can add, replace or delete the files in it, or move its tag, so every copy
 installs the VSIX the workflow built from `main`.
 
+To check that the update check and the install script can read the stable
+release without signing in:
+
+```sh
+curl -fsSL https://github.com/OreganNetworks/vscode-policy-manager/releases/latest/download/manifest.json
+curl -fsSLI https://github.com/OreganNetworks/vscode-policy-manager/releases/latest/download/install.sh
+```
+
 To roll stable back, or forward again, run **Promote to stable** with the
 version stable should be:
 
@@ -268,59 +277,15 @@ to the run summary, so the same command with that version undoes it. The next
 tag makes its own release stable again.
 
 The workflow runs in the `release` environment, which takes deployments from
-`main` only. It stops at its first step until that environment has required
-reviewers, which it gets when the repository goes public.
+`main` only and waits for a member of the `vscode-policy-manager-approvers`
+team to approve the run; whoever starts a run can't approve it. Should the
+environment lose its required reviewers, the workflow stops at its first step
+rather than move stable with no reviewer.
 
 Anyone with write access can still mark a release Latest from the Releases
 page, with no reviewer: GitHub has no finer permission for releases. As
 releases are immutable, that can only move stable to a version the `Release`
 workflow published.
-
-### Going public
-
-The repository is private until the CSO signs off making it public. Until then
-every update check gets HTTP 404, and the `release` environment can't have
-required reviewers: on the GitHub Team plan they are for public repositories
-only. Once it is signed off:
-
-1. Make the repository public:
-
-   ```sh
-   gh repo edit OreganNetworks/vscode-policy-manager --visibility public --accept-visibility-change-consequences
-   ```
-
-2. Make the `vscode-policy-manager-approvers` team the required reviewers of
-   the `release` environment, so **Promote to stable** runs. Whoever starts a
-   run can't approve it:
-
-   ```sh
-   gh api -X PUT repos/OreganNetworks/vscode-policy-manager/environments/release --input - <<'EOF'
-   {
-     "reviewers": [{ "type": "Team", "id": 20219239 }],
-     "prevent_self_review": true,
-     "can_admins_bypass": false,
-     "deployment_branch_policy": { "protected_branches": false, "custom_branch_policies": true }
-   }
-   EOF
-   ```
-
-3. A public repository can always be forked, so anyone can open a pull
-   request; only ONYX and the admins can still merge one, and only with a code
-   owner's approval. Require an approval before CI runs on a pull request from
-   outside the organisation:
-
-   ```sh
-   gh api -X PUT repos/OreganNetworks/vscode-policy-manager/actions/permissions/fork-pr-contributor-approval \
-     -f approval_policy=all_external_contributors
-   ```
-
-4. Once there is a release, check that the update check and the install
-   script can read the stable release without signing in:
-
-   ```sh
-   curl -fsSL https://github.com/OreganNetworks/vscode-policy-manager/releases/latest/download/manifest.json
-   curl -fsSLI https://github.com/OreganNetworks/vscode-policy-manager/releases/latest/download/install.sh
-   ```
 
 ## What it is not
 
