@@ -223,9 +223,7 @@ Nobody pushes to `main` directly. A pull request merges once those jobs pass
 and a code owner approves its latest push: a member of the
 `vscode-policy-manager-approvers` team (`.github/CODEOWNERS`). An approval from
 the rest of ONYX counts as a review, not as the approval the merge needs. Only
-ONYX and the repository admins can merge: the branch protection rule on `main`
-lets only the ONYX team push to it, which merging is, and admins are exempt
-from it.
+ONYX and the repository admins have write access, so only they can merge.
 
 ### Running it
 
