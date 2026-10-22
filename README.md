@@ -225,8 +225,7 @@ and a code owner approves its latest push: a member of the
 the rest of ONYX counts as a review, not as the approval the merge needs. Only
 ONYX and the repository admins can merge: the branch protection rule on `main`
 lets only the ONYX team push to it, which merging is, and admins are exempt
-from it. Anyone else with write access can review a pull request, but not merge
-it.
+from it.
 
 ### Running it
 
@@ -253,8 +252,7 @@ move or delete a `v*` tag, and the `Release` workflow refuses a tag on a commit
 that isn't on `main`. It tests, packages and publishes the VSIX with its
 `manifest.json` and the two install scripts, and marks the release Latest, so it
 is stable straight away. Releases are immutable: once one is published, nobody
-can add, replace or delete the files in it, or move its tag, so every copy
-installs the VSIX the workflow built from `main`.
+can add, replace or delete the files in it, or move its tag.
 
 To check that the update check and the install script can read the stable
 release without signing in:
@@ -284,8 +282,8 @@ rather than move stable with no reviewer.
 
 Anyone with write access can still mark a release Latest from the Releases
 page, with no reviewer: GitHub has no finer permission for releases. As
-releases are immutable, that can only move stable to a version the `Release`
-workflow published.
+releases are immutable, that can only move stable to a published release, as
+it was published.
 
 ## What it is not
 
