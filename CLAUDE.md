@@ -20,12 +20,12 @@ description.
 ## Source of truth
 
 The design is not in this repo. It lives in two attachments on TMP-7075. A
-re-upload carries a date prefix (`2026-10-09b_...`), so read the newest of each:
+re-upload carries a date prefix (`2026-10-09c_...`), so read the newest of each:
 
-- `oregan-vscode-extension-spec.md` - Draft v0.10: the functional requirements,
+- `oregan-vscode-extension-spec.md` - Draft v0.11: the functional requirements,
   manifest essentials and code layout; section 9 lists the changes since v0.6
 - `oregan-vscode-extension-implementation-plan.md` - the task-by-task
-  implementation plan, with the work since the first review as Tasks 12 to 30
+  implementation plan, with the work since the first review as Tasks 12 to 32
 
 Read both before implementing anything. Fetch them through the Atlassian MCP:
 `getJiraIssue` with `fields: ["attachment"]` for the attachment ids, then
@@ -101,7 +101,7 @@ scripts/add-extension.mjs      # the Add extension task (through the install scr
 .github/workflows/ci.yml       # every PR: lint, format, typecheck, build, test, package, integration
 .github/workflows/release.yml  # v* tags: test, package, publish the VSIX and manifest.json as Latest (stable)
 .github/workflows/promote.yml  # Promote to stable: mark an earlier (or later) release Latest, behind reviewers
-.github/CODEOWNERS             # ONYX and the admins outside it own every file; every PR needs one's approval
+.github/CODEOWNERS             # the vscode-policy-manager-approvers team owns every file; every PR needs one's approval
 images/icon.png                # the extension icon: a PNG, as vsce refuses an SVG icon
 ```
 
@@ -195,9 +195,8 @@ These are the ones that are easy to get wrong:
 From spec section 8. These gate design decisions, so check whether they have
 been answered before building on an assumption:
 
-1. CSO sign-off for company-wide distribution, and for making the release repo
-   public. If it has to stay private, the self-update switches to authenticated
-   requests via `vscode.authentication.getSession('github', ['repo'])`.
+1. CSO sign-off for company-wide distribution. Making the release repo public
+   is signed off, so the self-update stays unauthenticated.
 2. Answered: Claude Code is on Open VSX (`Anthropic.claude-code`), so the
    install instruction works in VSCodium, Cursor and Windsurf.
 3. Each fork's VS Code base version, the resulting `engines.vscode` floor, and
@@ -207,11 +206,10 @@ been answered before building on an assumption:
    or steer those developers to VS Code or VSCodium?
 5. Who owns the accounts that register the `oregannetworks` publisher on the
    VS Code Marketplace and Open VSX (TMP-8141).
-6. Who are the required reviewers on the `release` environment that
-   **Promote to stable** runs in. The ONYX team, as far as we know. The
-   environment exists, limited to `main`, but on the GitHub Team plan required
-   reviewers wait for the repository to be public, and the workflow refuses to
-   run until it has them. README **Going public** has the steps.
+6. Answered: the `vscode-policy-manager-approvers` team, the code owners, are
+   the required reviewers on the `release` environment that **Promote to
+   stable** runs in. The environment takes deployments from `main` only, and
+   the workflow refuses to run while it has no required reviewers.
 7. Rollout: each developer installs the extension by hand, with the install
    script, and can uninstall it. Will IT push the install, for example by
    running the script through MDM?
