@@ -88,8 +88,7 @@ async function runProfilesSuite({ baseArgs, cli, vscodeExecutablePath }: EditorO
   const userDataDir = join(USER_DATA_ROOT, 'profiles-user-data')
   rmSync(extensionsDir, { force: true, recursive: true })
   rmSync(userDataDir, { force: true, recursive: true })
-  const vsix = join(CACHE, 'oregan-policy-manager.vsix')
-  run(VSCE, ['package', '--no-dependencies', '--out', vsix])
+  const vsix = packageCopy('oregan-policy-manager', {})
   const { nextVersion, nextVsix } = packageNextVersion()
 
   const profileArgs = [`--extensions-dir=${extensionsDir}`, `--user-data-dir=${userDataDir}`]
@@ -285,8 +284,33 @@ function packageNextVersion(): { nextVersion: string; nextVsix: string } {
   return { nextVersion, nextVsix: packageCopy('profiles-next', { version: nextVersion }) }
 }
 
+/*
+ * Never resolves (RFC 6761), so an update check fails at once and the copy carries on.  A copy installed from a VSIX
+ * runs in production mode and checks the stable release, which replaces any other version: once a release is published,
+ * that would swap the version under test for the release part way through a suite.
+ */
+const UNREACHABLE_RELEASES_URL = 'https://releases.invalid'
+/** `RELEASES_URL` in `src/updater/selfUpdate.ts`, which this build can't import: its root folder is `test/` */
+const RELEASES_URL = 'https://github.com/OreganNetworks/vscode-policy-manager/releases'
+
 /**
- * Packages a copy of the extension with some `package.json` fields changed, such as another version or publisher.
+ * Points the update check of a packaged copy at {@link UNREACHABLE_RELEASES_URL}, so that the suites test the version
+ * they installed rather than the published stable release.  Throws when the URL isn't in the compiled code, so that
+ * moving it can't turn this into a silent no-op.
+ *
+ * @param copy  The folder of the copy, with its compiled `out/`.
+ */
+function pointUpdatesNowhere(copy: string): void {
+  const file = join(copy, 'out', 'updater', 'selfUpdate.js')
+  const code = readFileSync(file, 'utf8')
+  const pointed = code.replaceAll(RELEASES_URL, UNREACHABLE_RELEASES_URL)
+  if (pointed === code) throw new Error(`${file} does not contain ${RELEASES_URL}`)
+  writeFileSync(file, pointed)
+}
+
+/**
+ * Packages a copy of the extension with some `package.json` fields changed, such as another version or publisher.  The
+ * copy checks no release for updates (see {@link pointUpdatesNowhere}).
  *
  * @param name     The folder for the copy under `.vscode-test/`, and the name of the VSIX.
  * @param changes  The fields to change.
@@ -297,6 +321,7 @@ function packageCopy(name: string, changes: Record<string, string>): string {
   rmSync(copy, { force: true, recursive: true })
   for (const file of ['.vscodeignore', 'LICENSE', 'README.md', 'images', 'out'])
     cpSync(join(ROOT, file), join(copy, file), { recursive: true })
+  pointUpdatesNowhere(copy)
   const manifest = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')) as Record<string, unknown>
   const changed = { ...manifest, ...changes }
   writeFileSync(join(copy, 'package.json'), JSON.stringify(changed, null, 2))

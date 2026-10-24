@@ -319,10 +319,11 @@ it was published.
 ## What it is not
 
 This is a user-level default that is kept in place, not locked-down
-enforcement: a developer can still uninstall it. Enforcement belongs to the
-org-level layers - GitHub enterprise Copilot licence control and device policy
-(`AllowedExtensions`, Copilot managed settings) - described under
-[IDE Configuration > Enforcement beyond the repository](https://oregannetworks.atlassian.net/wiki/spaces/AI/pages/4050452495/IDE+Configuration#Enforcement-beyond-the-repository).
+enforcement: a developer can still uninstall it. Stricter enforcement is
+possible through the org-level layers - GitHub enterprise Copilot licence
+control and device policy (`AllowedExtensions`, Copilot managed settings) - but
+there are no plans to use them at the moment. See
+[IDE Configuration > Enforcement](https://oregannetworks.atlassian.net/wiki/spaces/AI/pages/4050452495/IDE+Configuration#Enforcement).
 
 It covers the editor only. Nothing here reaches the terminal: GitHub's Copilot
 CLI keeps working next to Claude Code, and Claude Code's own telemetry and error
