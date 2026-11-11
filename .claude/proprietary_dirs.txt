@@ -1,0 +1,2 @@
+# No proprietary directories excluded.
+# Reviewed by Leo White, Nov 2026: no third-party partner source in this repo
